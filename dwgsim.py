@@ -36,6 +36,7 @@ def create_reads_survivor(sequenced_genome_path, reads_folder, num_reads, name, 
     command = survivor_str + sequenced_genome_path + " " + error_profile + " " + str(num_reads) + " " \
               + reads1 + " >/dev/null 2>&1"
     p = multiprocessing.Process(target=os.system, name="survivor command", args=(command,))
+    p.daemon = True # kill p when this process dies...
     p.start()
 
     p.join(30)
