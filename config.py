@@ -2,9 +2,8 @@ from MA import *
 
 ## 
 # @brief output folder:
+# @note needs backslash at the end; folder must exist
 prefix = "/MAdata/transform_k_mers_into_smems/human_2/"
-#prefix = "/MAdata/transform_k_mers_into_smems/zebrafish/"
-#prefix = "C:\\Users\\Markus\\Desktop\\Project-Markus\\transform k-mers into (s)mems\\figures\\raw\\"
 
 ##
 # @brief prefix of MA index
@@ -45,5 +44,8 @@ str_msl = str(mem_size_large)
 ##
 # @brief x-axis configuration
 start_size = 1000
-stop_size = 10**7#3*10**9
+stop_size = 10**7 # 3*10**9
 num_steps = 10#100
+
+# This requires selenium and phantomjs-prebuilt otherwise the application will crash
+save_plots = False

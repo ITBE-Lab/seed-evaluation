@@ -154,8 +154,9 @@ def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_ax
     plot.yaxis.axis_label = yAxisKey
     style_plot(plot)
     show(plot)
-    plot.output_backend = "svg"
-    export_svgs(plot, filename=prefix + "svg/" + out_file + ".svg")
+    if save_plots:
+        plot.output_backend = "svg"
+        export_svgs(plot, filename=prefix + "svg/" + out_file + ".svg")
 
 
 def get_read_positions(reads, pack):
@@ -165,7 +166,7 @@ def get_read_positions(reads, pack):
         if name[0] == "rand" and name[1] == "0":
             ret.append((0, 0, True))
         else:
-            start = pack.start_of_sequence(name[0]) + int(name[1]) - 1
+            start = pack.start_of_sequence(name[0]) + int(float(name[1])) - 1
             if len(name) > 3:
                 strand = name[3] == "0"
             else:
@@ -652,8 +653,9 @@ def render_seed_set_comp(title, prefix, file_name, names,
     plot.yaxis.axis_label = "number of seeds"
     style_plot(plot)
     show(plot)
-    plot.output_backend = "svg"
-    export_svgs(plot, filename=prefix + "svg/" + file_name + ".svg")
+    if save_plots:
+        plot.output_backend = "svg"
+        export_svgs(plot, filename=prefix + "svg/" + file_name + ".svg")
     #output entropy as well
     reset_output()
     plot = figure(title=title, x_axis_type="log")
@@ -665,8 +667,9 @@ def render_seed_set_comp(title, prefix, file_name, names,
     plot.yaxis.axis_label = "seed entropy"
     style_plot(plot)
     show(plot)
-    plot.output_backend = "svg"
-    export_svgs(plot, filename=prefix + "svg/entropy-" + file_name + ".svg")
+    if save_plots:
+        plot.output_backend = "svg"
+        export_svgs(plot, filename=prefix + "svg/entropy-" + file_name + ".svg")
 
 def read_generation(backwards=False):
     ref_pack = Pack()
