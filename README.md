@@ -1,5 +1,5 @@
 # A performant bridge between fixed-size and variable-size seeding
-This repository contains the experiments performed in
+This repository contains the scripts for the experiments performed in
 [A performant bridge between fixed-size and variable-size seeding](https://doi.org/10.1101/825927 "bioRxiv - preprint").
 
 ## Requirements
