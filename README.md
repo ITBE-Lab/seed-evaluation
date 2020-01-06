@@ -36,7 +36,7 @@ If you get an error during the cmake setup or compilation, here are some things 
 - Multiple Python 3 instances on your system can confuse cmake.
 - The export command (last line in the above script) is not persistent between different terminals and logins.
 
-## Configuring the python scripts
+## Configuring the Python scripts
 
 `config.py` contains the configuration:
 - Set `dwgsim_str`, `survivor_str` and `survivor_error_profile` to the appropriate paths for your system.
