@@ -2,13 +2,13 @@ from MA import *
 
 ## 
 # @brief output folder:
-# @note needs backslash at the end; folder must exist
+# @note needs backslash at the end
+# folder must exist
 prefix = "/MAdata/transform_k_mers_into_smems/human_2/"
 
 ##
 # @brief prefix of MA index
 reference_genome_path = "/MAdata/genome/human/GRCh38.p12/ma/genome"
-#reference_genome_path = "/MAdata/genome/zebrafish/ma/genome"
 
 ##
 # @brief survivor and dwgsim config
@@ -19,8 +19,6 @@ illumina_read_size = 250
 survivor_str = "~/workspace/SURVIVOR/Debug/SURVIVOR simreads_n "
 survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
 num_pacb_reads = 1000
-
-max_ambiguity_fmd = 200
 
 ##
 # @brief minimizers configuration
@@ -35,6 +33,8 @@ def get_mmi_parameter_set():
 
 ##
 # @brief MEM configuration
+max_ambiguity_fmd = 200
+
 mem_size_small = 19
 str_mss = str(mem_size_small)
 
@@ -45,7 +45,9 @@ str_msl = str(mem_size_large)
 # @brief x-axis configuration
 start_size = 1000
 stop_size = 10**7 # 3*10**9
-num_steps = 10#100
+num_steps = 10 # 100
 
-# This requires selenium and phantomjs-prebuilt otherwise the application will crash
+##
+# @brief save plots as svg files
+# @note This requires selenium and phantomjs-prebuilt otherwise the application will crash
 save_plots = False
