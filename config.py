@@ -44,8 +44,11 @@ str_msl = str(mem_size_large)
 ##
 # @brief x-axis configuration
 start_size = 1000
-stop_size = 10**7 # 3*10**9
-num_steps = 10 # 100
+#stop_size = 10**7 # test section
+#num_steps = 10 # for test section
+
+stop_size = 3*10**9 # full genome
+num_steps = 100 # for full genome
 
 ##
 # @brief save plots as svg files

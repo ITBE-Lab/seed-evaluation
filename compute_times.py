@@ -345,6 +345,42 @@ class ExtendMinimizers:
         #for seed, read in zip(self.smems, self.queries):
         #    seed.confirm_seed_positions(read, self.ref_pack, True)
 
+class ExtendThenSortMinimizers:
+    def __init__(self):
+        self.seeds = None
+        self.ref_pack = None
+        self.reads = None
+        self.extender = None
+        self.smems = None
+
+    def prep(self, x, prefix, paired=True):
+        self.ref_pack = Pack()
+        self.ref_pack.load(prefix + "genomes/slice_" + str(x))
+        p_m = get_mmi_parameter_set()
+        index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
+        if paired:
+            reads1 = prefix + "reads/slice_" + str(x) + ".bwa.read1.fastq.gz"
+            reads2 = prefix + "reads/slice_" + str(x) + ".bwa.read2.fastq.gz"
+            reader = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads1)]))
+        else:
+            reads1 = prefix + "reads/slice_" + str(x) + ".fasta"
+            reader = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads1)]))
+        self.reads = reader.cpp_module.read_all()
+        std_reads = libMA.StringVector()
+        for nuc_seq in self.reads:
+            std_reads.append(str(nuc_seq))
+        self.minimizer_seeds = index.seed(std_reads, self.ref_pack)
+        self.extender = libMA.SeedExtender(p_m)
+        self.filter = libMA.SortRemoveDuplicates(p_m)
+
+    def run(self):
+        smems_w_dups = self.extender.cpp_module.extend(self.minimizer_seeds, self.reads, self.ref_pack)
+        self.smems = self.filter.cpp_module.filter(smems_w_dups)
+        return self.smems
+
+    def post(self):
+        pass
+
 class MinimizerToSmem:
     def __init__(self, min_seed_length=None):
         self.seeds = None
@@ -731,16 +767,17 @@ def runtime_analysis():
 
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_computation.tsv", True)
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False), prefix,
-                 "max_sp_seed_computation.tsv", True)
+                "max_sp_seed_computation.tsv", True)
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
-                 "smem_"+str_msl+"_computation.tsv", True)
+                "smem_"+str_msl+"_computation.tsv", True)
     measure_time(ComputeMaxExtendedSeeds(do_smems=False, min_seed_length=mem_size_large), prefix,
-                 "max_sp_"+str_msl+"_seed_computation.tsv", True)
+                "max_sp_"+str_msl+"_seed_computation.tsv", True)
     measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
     measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
     measure_time(ExtendMinimizers(), prefix, "minimizer_extending.tsv", True)
     measure_time(MinimizerToSmem(), prefix, "minimizer_to_smem.tsv", True)
     measure_time(MinimizerToMaxSpan(), prefix, "minimizer_to_max_span.tsv", True)
+    measure_time(ExtendThenSortMinimizers(), prefix, "extend_then_sort.tsv", True)
 
     render_times("runtimes - illumina", prefix, [
                     [("SMEMs l≥"+str_mss, "illumina_smem_computation.tsv", "blue")],
@@ -758,6 +795,9 @@ def runtime_analysis():
                     ("Alg. 1 (lines 1-8)", "illumina_minimizer_lumping.tsv", "orange"),
                     ("Alg. 1 (lines 9-14)", "illumina_minimizer_extending.tsv", "yellow"),
                     ("Alg. 2b (max. spanning)", "illumina_minimizer_to_max_span.tsv", "purple")],
+
+                    [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
+                     ("Extend then Filter", "illumina_extend_then_sort.tsv", "black")],
                 ],
                 "illumina_times",
                 divide_y_by=num_illumina_reads/1000 )
@@ -777,6 +817,8 @@ def runtime_analysis():
                     ("Alg. 1 (lines 9-14)", "pacb_minimizer_extending.tsv", "yellow"),
                     ("Alg. 2b (max. spanning)", "pacb_minimizer_to_max_span.tsv", "purple")],
 
+                    [("10,19-minimizer", "pacb_minimizer_computation.tsv", "red"),
+                     ("Extend then Filter", "pacb_extend_then_sort.tsv", "black")],
                 ],
                 "pacb_times",
                 divide_y_by=num_pacb_reads/1000 )
@@ -827,5 +869,5 @@ def seed_set_diff_analysis():
 
 read_generation()
 runtime_analysis()
-seed_entropy_analysis()
-seed_set_diff_analysis()
+#seed_entropy_analysis()
+#seed_set_diff_analysis()
