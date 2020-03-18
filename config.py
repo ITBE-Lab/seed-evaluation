@@ -9,6 +9,7 @@ prefix = "/MAdata/transform_k_mers_into_smems/human_2/"
 ##
 # @brief prefix of MA index
 reference_genome_path = "/MAdata/genome/human/GRCh38.p12/ma/genome"
+reference_genome_fasta = "/MAdata/genome/human/GRCh38.p12/fasta/genome.fna"
 
 ##
 # @brief survivor and dwgsim config
@@ -41,14 +42,23 @@ str_mss = str(mem_size_small)
 mem_size_large = 29
 str_msl = str(mem_size_large)
 
-##
-# @brief x-axis configuration
-start_size = 1000
-#stop_size = 10**7 # test section
-#num_steps = 10 # for test section
 
-stop_size = 3*10**9 # full genome
-num_steps = 100 # for full genome
+x_axis_unit = "read_noise" # "genome_section_size"
+
+
+if x_axis_unit == "genome_section_size":
+    ##
+    # @brief x-axis configuration
+    start_size = 1000
+    #stop_size = 10**7 # test section
+    #num_steps = 10 # for test section
+
+    stop_size = 3*10**9 # full genome
+    num_steps = 100 # for full genome
+if x_axis_unit == "read_noise":
+    start_size = 0
+    stop_size = 1.5
+    num_steps = 100
 
 ##
 # @brief save plots as svg files

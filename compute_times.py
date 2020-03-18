@@ -48,13 +48,22 @@ def log_range(start=start_size, stop=stop_size, num_steps=num_steps):
     for x in range(0, num_steps, 1):
         yield round(math.exp(start + (stop-start)*x/(num_steps-1)))
 
-def generate_genomes(time_steps, ref_pack, out_prefix, backwards=False):
+def linear_range(start=start_size, stop=stop_size, num_steps=num_steps):
+    for x in range(0, num_steps, 1):
+        yield start + (stop - start) * x / num_steps
+
+def set_up_folders():
     if not os.path.exists(prefix + "svg/"):
         os.mkdir(prefix + "svg/")
     if not os.path.exists(prefix + "genomes/"):
         os.mkdir(prefix + "genomes/")
     if not os.path.exists(prefix + "reads/"):
         os.mkdir(prefix + "reads/")
+    if not os.path.exists(prefix + "profiles/"):
+        os.mkdir(prefix + "profiles/")
+
+def generate_genomes(time_steps, ref_pack, out_prefix, backwards=False):
+    set_up_folders()
     print("generating genomes...")
     for idx, x in enumerate(time_steps()):
         print(idx, "...")
@@ -73,17 +82,28 @@ def generate_genomes(time_steps, ref_pack, out_prefix, backwards=False):
                     idx += 50
     print("done")
 
+def generate_profiles(time_steps):
+    set_up_folders()
+    print("generating profiles...")
+    for idx, x in enumerate(time_steps()):
+        dwgsim.gen_survivor_error_profile_fac(prefix + "profiles/pacb", fac=x)
+    print("done")
+
 def generate_reads(time_steps, out_prefix, genome_prefix):
     print("generating reads...")
     for idx, x in enumerate(time_steps()):
         print(idx, "...")
-        dwgsim.create_illumina_reads_dwgsim(genome_prefix + "/slice_" + str(x) + ".fasta", out_prefix,
-                                            num_illumina_reads, "slice_" + str(x), illumina_read_size)
-        dwgsim.create_reads_survivor(genome_prefix + "/slice_" + str(x) + ".fasta", out_prefix, num_pacb_reads,
-                                     "slice_" + str(x), survivor_error_profile)
+        if x_axis_unit == "genome_section_size":
+            dwgsim.create_illumina_reads_dwgsim(genome_prefix + "/slice_" + str(x) + ".fasta", out_prefix,
+                                                num_illumina_reads, "slice_" + str(x), illumina_read_size)
+            dwgsim.create_reads_survivor(genome_prefix + "/slice_" + str(x) + ".fasta", out_prefix, num_pacb_reads,
+                                        "slice_" + str(x), survivor_error_profile)
+        if x_axis_unit == "read_noise":
+            dwgsim.create_reads_survivor(reference_genome_fasta, out_prefix, num_pacb_reads,
+                                        "noise_" + str(x), prefix + "profiles/pacb_" + str(x) + ".txt")
     print("done")
 
-def measure_time(caller, prefix, log_file_name, with_single=False, time_steps=log_range):
+def measure_time_section_size(caller, prefix, log_file_name, with_single=False, time_steps=log_range):
     print(log_file_name, ": measuring time...")
     with open(prefix + "illumina_" + log_file_name, "w") as log_file:
         log_file.write("index\tgenome size\truntime\n")
@@ -111,6 +131,60 @@ def measure_time(caller, prefix, log_file_name, with_single=False, time_steps=lo
 
     print("done")
 
+def measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_single=False, time_steps=linear_range):
+    ref_pack = Pack()
+    ref_pack.load(reference_genome_path)
+    p_m = get_mmi_parameter_set()
+    mm_index = libMA.MinimizerIndex(p_m, prefix + "genomes/full.mmi")
+    fm_index = FMIndex()
+    fm_index.load(reference_genome_path)
+    print(log_file_name, ": measuring time...")
+    if with_paired:
+        with open(prefix + "illumina_" + log_file_name, "w") as log_file_paired:
+            log_file_paired.write("index\tgenome size\truntime\n")
+            for idx, x in enumerate(time_steps()):
+                print(idx, "...")
+
+                reads_file_name = prefix + "reads/noise_" + str(x) + ".bwa.read1.fastq.gz"
+                reads = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads_file_name)])) \
+                            .cpp_module.read_all()
+
+                caller.prep_noise(ref_pack, reads, mm_index, fm_index)
+                start = time.time()
+                caller.run()
+                end = time.time()
+                caller.post()
+
+                print("time required (paired):", end - start)
+                log_file_paired.write(str(idx) + "\t" + str(x) + "\t" + str(end - start) + "\n")
+    if with_single:
+        with open(prefix + "pacb_" + log_file_name, "w") as log_file_single:
+            log_file_single.write("index\tgenome size\truntime\n")
+            for idx, x in enumerate(time_steps()):
+                print(idx, "...")
+
+                reads_file_name = prefix + "reads/noise_" + str(x) + ".fasta"
+                reads = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads_file_name)])) \
+                                .cpp_module.read_all()
+
+                caller.prep_noise(ref_pack, reads, mm_index, fm_index)
+                start = time.time()
+                caller.run()
+                end = time.time()
+                caller.post()
+
+                print("time required (pacbio):", end - start)
+                log_file_single.write(str(idx) + "\t" + str(x) + "\t" + str(end - start) + "\n")
+
+    print("done")
+
+
+def measure_time(caller, prefix, log_file_name, with_single=False):
+    if x_axis_unit == "genome_section_size":
+        measure_time_section_size(caller, prefix, log_file_name, with_single=with_single)
+    if x_axis_unit == "read_noise":
+        measure_time_noise(caller, prefix, log_file_name, with_paired=False, with_single=with_single)
+
 def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_axis_log=False, yAxisKey2=None,
                  divide_y_by=1):
     xAxes = []
@@ -127,7 +201,7 @@ def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_ax
                 if currY is None:
                     currY = [0]*(len(lines) - 1)
                 header = {y:x for x,y in enumerate(lines[0])}
-                xAxis_ = [ int(x[header["genome size"]]) for x in lines[1:] ]
+                xAxis_ = [ float(x[header["genome size"]]) for x in lines[1:] ]
                 #assert xAxis is None or xAxis == xAxis_
                 yAxes_ = [ float(x[header[yAxisKey]])/divide_y_by + y for x,y in zip(lines[1:], currY) ]
                 xAxes.append(xAxis_)
@@ -137,10 +211,13 @@ def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_ax
                     yAxes_2 = [ float(x[header[yAxisKey2]])/divide_y_by for x in lines[1:] ]
                     yAxes.append(yAxes_2)
     reset_output()
-    if y_axis_log:
-        plot = figure(title=title, x_axis_type="log", y_axis_type="log")
+    if x_axis_unit == "genome_section_size":
+        if y_axis_log:
+            plot = figure(title=title, x_axis_type="log", y_axis_type="log")
+        else:
+            plot = figure(title=title, x_axis_type="log")
     else:
-        plot = figure(title=title, x_axis_type="log")
+        plot = figure(title=title)
     step = 1 if yAxisKey2 is None else 2
     for yAxis, xAxis, legend, color in zip(yAxes[::step], xAxes, legends, colors):
         plot.line(x=xAxis, y=yAxis, legend=legend, line_color=color, line_width=point_to_px(4))
@@ -264,6 +341,14 @@ class ComputeMinimizers:
         for nuc_seq in self.reads:
             self.str_reads.append(str(nuc_seq))
 
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+        self.ref_pack = ref_pack
+        self.index = mm_index
+        self.reads = reads
+        self.str_reads = libMA.StringVector()
+        for nuc_seq in self.reads:
+            self.str_reads.append(str(nuc_seq))
+
     def run(self):
         self.seeds = self.index.seed(self.str_reads, self.ref_pack)
         return self.seeds
@@ -277,10 +362,12 @@ class LumpMinimizers:
     def __init__(self):
         self.seeds = None
         self.lumper = None
+        self.nuc_seq_reads = None
+        self.ref_pack = None
 
     def prep(self, x, prefix, paired=True):
-        ref_pack = Pack()
-        ref_pack.load(prefix + "genomes/slice_" + str(x))
+        self.ref_pack = Pack()
+        self.ref_pack.load(prefix + "genomes/slice_" + str(x))
         p_m = get_mmi_parameter_set()
         index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
         if paired:
@@ -290,15 +377,25 @@ class LumpMinimizers:
         else:
             reads1 = prefix + "reads/slice_" + str(x) + ".fasta"
             reader = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads1)]))
-        nuc_seq_reads = reader.cpp_module.read_all()
+        self.nuc_seq_reads = reader.cpp_module.read_all()
         reads = libMA.StringVector()
-        for nuc_seq in nuc_seq_reads:
+        for nuc_seq in self.nuc_seq_reads:
             reads.append(str(nuc_seq))
-        self.seeds = index.seed(reads, ref_pack)
+        self.seeds = index.seed(reads, self.ref_pack)
+        self.lumper = libMA.SeedLumping(p_m)
+
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+        p_m = get_mmi_parameter_set()
+        self.ref_pack = ref_pack
+        self.nuc_seq_reads = reads
+        reads = libMA.StringVector()
+        for nuc_seq in self.nuc_seq_reads:
+            reads.append(str(nuc_seq))
+        self.seeds = mm_index.seed(reads, self.ref_pack)
         self.lumper = libMA.SeedLumping(p_m)
 
     def run(self):
-        self.lumper.cpp_module.lump(self.seeds)
+        self.lumper.cpp_module.lump(self.seeds, self.nuc_seq_reads, self.ref_pack)
 
     def post(self):
         pass
@@ -330,7 +427,20 @@ class ExtendMinimizers:
             std_reads.append(str(nuc_seq))
         minimizer_seeds = index.seed(std_reads, self.ref_pack)
         lumper = libMA.SeedLumping(p_m)
-        self.seeds = lumper.cpp_module.lump(minimizer_seeds)
+        self.seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
+        del minimizer_seeds
+        self.extender = libMA.SeedExtender(p_m)
+
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+        p_m = get_mmi_parameter_set()
+        self.ref_pack = ref_pack
+        self.reads = reads
+        std_reads = libMA.StringVector()
+        for nuc_seq in self.reads:
+            std_reads.append(str(nuc_seq))
+        minimizer_seeds = mm_index.seed(std_reads, self.ref_pack)
+        lumper = libMA.SeedLumping(p_m)
+        self.seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
         del minimizer_seeds
         self.extender = libMA.SeedExtender(p_m)
 
@@ -373,6 +483,17 @@ class ExtendThenSortMinimizers:
         self.extender = libMA.SeedExtender(p_m)
         self.filter = libMA.SortRemoveDuplicates(p_m)
 
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+        p_m = get_mmi_parameter_set()
+        self.ref_pack = ref_pack
+        self.reads = reads
+        std_reads = libMA.StringVector()
+        for nuc_seq in self.reads:
+            std_reads.append(str(nuc_seq))
+        self.minimizer_seeds = mm_index.seed(std_reads, self.ref_pack)
+        self.extender = libMA.SeedExtender(p_m)
+        self.filter = libMA.SortRemoveDuplicates(p_m)
+
     def run(self):
         smems_w_dups = self.extender.cpp_module.extend(self.minimizer_seeds, self.reads, self.ref_pack)
         self.smems = self.filter.cpp_module.filter(smems_w_dups)
@@ -408,7 +529,24 @@ class MinimizerToSmem:
             str_reads.append(str(nuc_seq))
         minimizer_seeds = index.seed(str_reads, self.ref_pack)
         lumper = libMA.SeedLumping(p_m)
-        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds)
+        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
+        del minimizer_seeds
+        extender = libMA.SeedExtender(p_m)
+        self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
+        if not self.min_seed_length is None:
+            self.seeds = libMA.MinLength(p_m, self.min_seed_length).cpp_module.filter(self.seeds)
+        self.filter = libMA.MaxExtendedToSMEM(p_m)
+
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+        p_m = get_mmi_parameter_set()
+        self.ref_pack = ref_pack
+        self.reads = reads
+        std_reads = libMA.StringVector()
+        for nuc_seq in self.reads:
+            std_reads.append(str(nuc_seq))
+        minimizer_seeds = mm_index.seed(std_reads, self.ref_pack)
+        lumper = libMA.SeedLumping(p_m)
+        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
         del minimizer_seeds
         extender = libMA.SeedExtender(p_m)
         self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
@@ -452,7 +590,24 @@ class MinimizerToMaxSpan:
             str_reads.append(str(nuc_seq))
         minimizer_seeds = index.seed(str_reads, self.ref_pack)
         lumper = libMA.SeedLumping(p_m)
-        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds)
+        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
+        del minimizer_seeds
+        extender = libMA.SeedExtender(p_m)
+        self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
+        if not self.min_seed_length is None:
+            self.seeds = libMA.MinLength(p_m, self.min_seed_length).cpp_module.filter(self.seeds)
+        self.filter = libMA.MaxExtendedToMaxSpanning(p_m)
+
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+        p_m = get_mmi_parameter_set()
+        self.ref_pack = ref_pack
+        self.reads = reads
+        std_reads = libMA.StringVector()
+        for nuc_seq in self.reads:
+            std_reads.append(str(nuc_seq))
+        minimizer_seeds = mm_index.seed(std_reads, self.ref_pack)
+        lumper = libMA.SeedLumping(p_m)
+        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
         del minimizer_seeds
         extender = libMA.SeedExtender(p_m)
         self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
@@ -499,6 +654,19 @@ class ComputeMaxExtendedSeeds:
             reads1 = prefix + "reads/slice_" + str(x) + ".fasta"
             reader = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads1)]))
         self.reads = reader.cpp_module.read_all()
+
+        self.seeder = BinarySeeding(p_m)
+
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+        p_m = ParameterSetManager()
+        self.ref_pack = ref_pack
+        if self.do_smems:
+            p_m.by_name("Seeding Technique").set(1)
+        print("Seeding Technique=", p_m.by_name("Seeding Technique").get())
+        p_m.by_name("Minimal Seed Length").set(self.min_seed_length)
+        p_m.by_name("Maximal Ambiguity").set(max_ambiguity_fmd)
+        self.index = fm_index
+        self.reads = reads
 
         self.seeder = BinarySeeding(p_m)
 
@@ -707,12 +875,17 @@ def render_seed_set_comp(title, prefix, file_name, names,
         plot.output_backend = "svg"
         export_svgs(plot, filename=prefix + "svg/entropy-" + file_name + ".svg")
 
-def read_generation(backwards=False):
+def read_generation(time_steps=linear_range, backwards=False):
     ref_pack = Pack()
     ref_pack.load(reference_genome_path)
     print("genome size", ref_pack.unpacked_size())
-    generate_genomes(log_range, ref_pack, prefix + "genomes", backwards=backwards)
-    generate_reads(log_range, prefix + "reads/", prefix + "genomes")
+    if x_axis_unit == "genome_section_size":
+        generate_genomes(time_steps, ref_pack, prefix + "genomes", backwards=backwards)
+    if x_axis_unit == "read_noise":
+        generate_profiles(time_steps)
+        libMA.MinimizerIndex(get_mmi_parameter_set(), ref_pack.contigSeqs(),
+                             ref_pack.contigNames()).dump(prefix + "genomes/full.mmi")
+    generate_reads(time_steps, prefix + "reads/", prefix + "genomes")
 
 def seed_entropy_analysis():
     seed_set_entropy(ComputeMinimizers(), prefix, "minimizer_seed_entropy.tsv", True)
@@ -762,8 +935,9 @@ def seed_entropy_analysis():
 
 
 def runtime_analysis():
-    measure_time(CreateFmdIndex(), prefix, "fm_index_construction.tsv")
-    measure_time(CreateMinimizerIndex(), prefix, "minimizer_index_construction.tsv")
+    if x_axis_unit == "genome_section_size":
+        measure_time(CreateFmdIndex(), prefix, "fm_index_construction.tsv")
+        measure_time(CreateMinimizerIndex(), prefix, "minimizer_index_construction.tsv")
 
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_computation.tsv", True)
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False), prefix,
@@ -773,10 +947,10 @@ def runtime_analysis():
     measure_time(ComputeMaxExtendedSeeds(do_smems=False, min_seed_length=mem_size_large), prefix,
                 "max_sp_"+str_msl+"_seed_computation.tsv", True)
     measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
-    measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
-    measure_time(ExtendMinimizers(), prefix, "minimizer_extending.tsv", True)
     measure_time(MinimizerToSmem(), prefix, "minimizer_to_smem.tsv", True)
     measure_time(MinimizerToMaxSpan(), prefix, "minimizer_to_max_span.tsv", True)
+    measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
+    measure_time(ExtendMinimizers(), prefix, "minimizer_extending.tsv", True)
     measure_time(ExtendThenSortMinimizers(), prefix, "extend_then_sort.tsv", True)
 
     render_times("runtimes - illumina", prefix, [
@@ -787,8 +961,8 @@ def runtime_analysis():
                       "lightgreen")],
 
                     [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
-                    ("Alg. 1 (lines 1-8)", "illumina_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 1 (lines 9-14)", "illumina_minimizer_extending.tsv", "yellow"),
+                    ("Alg. 1 (lines 1-11)", "illumina_minimizer_lumping.tsv", "orange"),
+                    ("Alg. 1 (lines 12-16)", "illumina_minimizer_extending.tsv", "yellow"),
                     ("Alg. 2a (SMEMs)", "illumina_minimizer_to_smem.tsv", "pink")],
 
                     [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
@@ -797,7 +971,7 @@ def runtime_analysis():
                     ("Alg. 2b (max. spanning)", "illumina_minimizer_to_max_span.tsv", "purple")],
 
                     [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
-                     ("Extend then Filter", "illumina_extend_then_sort.tsv", "black")],
+                     ("Extend-Filter", "illumina_extend_then_sort.tsv", "black")],
                 ],
                 "illumina_times",
                 divide_y_by=num_illumina_reads/1000 )
@@ -808,8 +982,8 @@ def runtime_analysis():
                     [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_computation.tsv", "lightgreen")],
 
                     [("10,19-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                    ("Alg. 1 (lines 1-8)", "pacb_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 1 (lines 9-14)", "pacb_minimizer_extending.tsv", "yellow"),
+                    ("Alg. 1 (lines 1-11)", "pacb_minimizer_lumping.tsv", "orange"),
+                    ("Alg. 1 (lines 12-16)", "pacb_minimizer_extending.tsv", "yellow"),
                     ("Alg. 2a (SMEMs)", "pacb_minimizer_to_smem.tsv", "pink")],
 
                     [("10,19-minimizer", "pacb_minimizer_computation.tsv", "red"),
@@ -818,7 +992,7 @@ def runtime_analysis():
                     ("Alg. 2b (max. spanning)", "pacb_minimizer_to_max_span.tsv", "purple")],
 
                     [("10,19-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                     ("Extend then Filter", "pacb_extend_then_sort.tsv", "black")],
+                     ("Extend-Filter", "pacb_extend_then_sort.tsv", "black")],
                 ],
                 "pacb_times",
                 divide_y_by=num_pacb_reads/1000 )
@@ -865,7 +1039,6 @@ def seed_set_diff_analysis():
                          "pacb_seed_set_comparison_max_sp_"+str_msl+".tsv",
                          ("unique 10,19-minimizers", "unique max. spanning l≥"+str_msl, "shared seeds l≥"+str_msl),
                          divide_y_by=num_pacb_reads)
-
 
 read_generation()
 runtime_analysis()

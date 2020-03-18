@@ -3,6 +3,7 @@ import subprocess
 import random
 import multiprocessing
 from config import *
+from bokeh.plotting import figure, show
 
 def create_illumina_reads_dwgsim(sequenced_genome_path, reads_folder, num_reads, name, read_length):
     print("\tdwgsim...")
@@ -29,6 +30,31 @@ def create_illumina_reads_dwgsim(sequenced_genome_path, reads_folder, num_reads,
     os.system("zcat " + file_names1 + " > " + reads1)
     os.system("zcat " + file_names2 + " > " + reads2)
 
+def gen_survivor_error_profile(out_file_name, in_file_name=survivor_error_profile, p_mod=lambda x: x):
+    with open(os.path.expanduser(in_file_name)) as in_file:
+        lines = in_file.readlines()[1:]
+        pos_list = [int(line.split("\t")[0]) for line in lines]
+        p_stop = [float(line.split("\t")[1]) for line in lines]
+        p_match = [float(line.split("\t")[2]) for line in lines]
+        p_missmatch = [float(line.split("\t")[3]) for line in lines]
+        p_ins = [float(line.split("\t")[4]) for line in lines]
+        p_del = [float(line.split("\t")[5]) for line in lines]
+    with open(out_file_name, "w") as out_file:
+        out_file.write("Pos\tP(stop)\tP(match)\tp(mismatch)\tP(ins)]\tP(del)\n")
+        for pos in pos_list:
+            p_stop_val = p_stop[pos]
+            p_missmatch_val = p_mod(p_missmatch[pos])
+            p_match_val = 1 - p_mod(1 - p_match[pos])
+            p_ins_val = p_mod(p_ins[pos])
+            p_del_val = p_mod(p_del[pos])
+            out_file.write(str(pos) + "\t" + str(p_stop_val) + "\t" + str(p_match_val) + "\t" + str(p_missmatch_val) +
+                           "\t" + str(p_ins_val) + "\t" + str(p_del_val) + "\n")
+
+def gen_survivor_error_profile_fac(out_file_name, fac=1):
+    gen_survivor_error_profile(out_file_name + "_" + str(fac) + ".txt",
+                               survivor_error_profile,
+                               p_mod=lambda x: 1 - (1 - x)**fac)
+
 def create_reads_survivor(sequenced_genome_path, reads_folder, num_reads, name, error_profile):
     print("\tsurvivor...")
     reads1 = reads_folder + name + ".fasta"
@@ -44,3 +70,27 @@ def create_reads_survivor(sequenced_genome_path, reads_folder, num_reads, name, 
         print("WARNING: survivor is running for 30 secs. It seems to be stuck; killing it now.")
         p.terminate()
         p.join()
+
+def plot_error_profile(in_file_name):
+    plot = figure(title=in_file_name)
+    with open(os.path.expanduser(in_file_name)) as in_file:
+        x = []
+        ys = {"stop":[], "match": [], "ins": [], "del": []}
+        for line in in_file.readlines()[1:]:
+            pos, stop, match, _, ins, del_ = [float(x) for x in line.split("\t")]
+            x.append(pos)
+            ys["stop"].append(stop)
+            ys["match"].append(match)
+            ys["ins"].append(ins)
+            ys["del"].append(del_)
+        plot.line(x=x, y=ys["stop"], line_color="black", legend_label="stop")
+        plot.line(x=x, y=ys["match"], line_color="red", legend_label="match")
+        plot.line(x=x, y=ys["ins"], line_color="yellow", legend_label="ins")
+        plot.line(x=x, y=ys["del"], line_color="green", legend_label="del")
+
+    show(plot)
+
+if __name__ == "__main__":
+    #plot_error_profile(survivor_error_profile)
+    gen_survivor_error_profile_fac("test_error_profile", 1 )
+    plot_error_profile("test_error_profile_1.txt")
