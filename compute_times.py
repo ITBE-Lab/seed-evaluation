@@ -50,7 +50,7 @@ def log_range(start=start_size, stop=stop_size, num_steps=num_steps):
 
 def linear_range(start=start_size, stop=stop_size, num_steps=num_steps):
     for x in range(0, num_steps, 1):
-        yield start + (stop - start) * x / num_steps
+        yield start + (stop - start) * x / (num_steps - 1)
 
 def set_up_folders():
     if not os.path.exists(prefix + "svg/"):
@@ -149,7 +149,7 @@ def measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_sin
                 reads = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads_file_name)])) \
                             .cpp_module.read_all()
 
-                caller.prep_noise(ref_pack, reads, mm_index, fm_index)
+                caller.prep_noise(ref_pack, reads, mm_index, fm_index, x)
                 start = time.time()
                 caller.run()
                 end = time.time()
@@ -167,7 +167,7 @@ def measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_sin
                 reads = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads_file_name)])) \
                                 .cpp_module.read_all()
 
-                caller.prep_noise(ref_pack, reads, mm_index, fm_index)
+                caller.prep_noise(ref_pack, reads, mm_index, fm_index, x)
                 start = time.time()
                 caller.run()
                 end = time.time()
@@ -217,7 +217,10 @@ def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_ax
         else:
             plot = figure(title=title, x_axis_type="log")
     else:
-        plot = figure(title=title)
+        if y_axis_log:
+            plot = figure(title=title, y_axis_type="log")
+        else:
+            plot = figure(title=title)
     step = 1 if yAxisKey2 is None else 2
     for yAxis, xAxis, legend, color in zip(yAxes[::step], xAxes, legends, colors):
         plot.line(x=xAxis, y=yAxis, legend=legend, line_color=color, line_width=point_to_px(4))
@@ -258,6 +261,10 @@ def overlap(start_a, end_a, start_b, end_b):
     return max(0, end - start)
 
 def get_seed_entropy(seeds_list, reads, pack, also_return_percent_covered=False):
+    if seeds_list is None:
+        if also_return_percent_covered:
+            return float("NaN"), 0
+        return 0
     read_pos = get_read_positions(reads, pack)
     # accumulated overlap with read region
     hits = 0
@@ -341,7 +348,7 @@ class ComputeMinimizers:
         for nuc_seq in self.reads:
             self.str_reads.append(str(nuc_seq))
 
-    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index, x):
         self.ref_pack = ref_pack
         self.index = mm_index
         self.reads = reads
@@ -364,6 +371,7 @@ class LumpMinimizers:
         self.lumper = None
         self.nuc_seq_reads = None
         self.ref_pack = None
+        self.lumped_seeds = None
 
     def prep(self, x, prefix, paired=True):
         self.ref_pack = Pack()
@@ -384,7 +392,7 @@ class LumpMinimizers:
         self.seeds = index.seed(reads, self.ref_pack)
         self.lumper = libMA.SeedLumping(p_m)
 
-    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index, x):
         p_m = get_mmi_parameter_set()
         self.ref_pack = ref_pack
         self.nuc_seq_reads = reads
@@ -395,9 +403,13 @@ class LumpMinimizers:
         self.lumper = libMA.SeedLumping(p_m)
 
     def run(self):
-        self.lumper.cpp_module.lump(self.seeds, self.nuc_seq_reads, self.ref_pack)
+        self.lumped_seeds = self.lumper.cpp_module.lump(self.seeds, self.nuc_seq_reads, self.ref_pack)
 
     def post(self):
+        x = 0
+        for seeds in self.lumped_seeds:
+            x += len(seeds)
+        print("num seeds:", x)
         pass
 
 class ExtendMinimizers:
@@ -431,7 +443,7 @@ class ExtendMinimizers:
         del minimizer_seeds
         self.extender = libMA.SeedExtender(p_m)
 
-    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index, x):
         p_m = get_mmi_parameter_set()
         self.ref_pack = ref_pack
         self.reads = reads
@@ -483,7 +495,7 @@ class ExtendThenSortMinimizers:
         self.extender = libMA.SeedExtender(p_m)
         self.filter = libMA.SortRemoveDuplicates(p_m)
 
-    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index, x):
         p_m = get_mmi_parameter_set()
         self.ref_pack = ref_pack
         self.reads = reads
@@ -529,15 +541,15 @@ class MinimizerToSmem:
             str_reads.append(str(nuc_seq))
         minimizer_seeds = index.seed(str_reads, self.ref_pack)
         lumper = libMA.SeedLumping(p_m)
-        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
+        self.seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
         del minimizer_seeds
-        extender = libMA.SeedExtender(p_m)
-        self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
+        #extender = libMA.SeedExtender(p_m)
+        #self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
         if not self.min_seed_length is None:
             self.seeds = libMA.MinLength(p_m, self.min_seed_length).cpp_module.filter(self.seeds)
         self.filter = libMA.MaxExtendedToSMEM(p_m)
 
-    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index, x):
         p_m = get_mmi_parameter_set()
         self.ref_pack = ref_pack
         self.reads = reads
@@ -546,10 +558,10 @@ class MinimizerToSmem:
             std_reads.append(str(nuc_seq))
         minimizer_seeds = mm_index.seed(std_reads, self.ref_pack)
         lumper = libMA.SeedLumping(p_m)
-        lumped_seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
+        self.seeds = lumper.cpp_module.lump(minimizer_seeds, self.reads, self.ref_pack)
         del minimizer_seeds
-        extender = libMA.SeedExtender(p_m)
-        self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
+        #extender = libMA.SeedExtender(p_m)
+        #self.seeds = extender.cpp_module.extend(lumped_seeds, self.reads, self.ref_pack)
         if not self.min_seed_length is None:
             self.seeds = libMA.MinLength(p_m, self.min_seed_length).cpp_module.filter(self.seeds)
         self.filter = libMA.MaxExtendedToSMEM(p_m)
@@ -598,7 +610,7 @@ class MinimizerToMaxSpan:
             self.seeds = libMA.MinLength(p_m, self.min_seed_length).cpp_module.filter(self.seeds)
         self.filter = libMA.MaxExtendedToMaxSpanning(p_m)
 
-    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index, x):
         p_m = get_mmi_parameter_set()
         self.ref_pack = ref_pack
         self.reads = reads
@@ -626,7 +638,7 @@ class MinimizerToMaxSpan:
 
 
 class ComputeMaxExtendedSeeds:
-    def __init__(self, min_seed_length, do_smems=True):
+    def __init__(self, min_seed_length, do_smems=True, do_mems=False):
         self.index = None
         self.reads = None
         self.seeder = None
@@ -634,6 +646,8 @@ class ComputeMaxExtendedSeeds:
         self.ref_pack = None
         self.min_seed_length = min_seed_length-1
         self.do_smems = do_smems
+        self.do_mems = do_mems
+        assert not (do_smems and do_mems)
 
     def prep(self, x, prefix, paired=True):
         self.ref_pack = Pack()
@@ -641,7 +655,9 @@ class ComputeMaxExtendedSeeds:
         p_m = ParameterSetManager()
         if self.do_smems:
             p_m.by_name("Seeding Technique").set(1)
-        print("Seeding Technique=", p_m.by_name("Seeding Technique").get())
+        if self.do_mems:
+            p_m.by_name("Seeding Technique").set(2)
+        print("Seeding Technique =", p_m.by_name("Seeding Technique").get())
         p_m.by_name("Minimal Seed Length").set(self.min_seed_length)
         p_m.by_name("Maximal Ambiguity").set(max_ambiguity_fmd)
         self.index = FMIndex()
@@ -657,24 +673,33 @@ class ComputeMaxExtendedSeeds:
 
         self.seeder = BinarySeeding(p_m)
 
-    def prep_noise(self, ref_pack, reads, mm_index, fm_index):
+    def prep_noise(self, ref_pack, reads, mm_index, fm_index, x):
         p_m = ParameterSetManager()
         self.ref_pack = ref_pack
         if self.do_smems:
             p_m.by_name("Seeding Technique").set(1)
-        print("Seeding Technique=", p_m.by_name("Seeding Technique").get())
+        if self.do_mems:
+            p_m.by_name("Seeding Technique").set(2)
+        print("Seeding Technique =", p_m.by_name("Seeding Technique").get())
         p_m.by_name("Minimal Seed Length").set(self.min_seed_length)
         p_m.by_name("Maximal Ambiguity").set(max_ambiguity_fmd)
         self.index = fm_index
         self.reads = reads
-
-        self.seeder = BinarySeeding(p_m)
+        if x > 0.2 or not self.do_mems:
+            self.seeder = BinarySeeding(p_m)
 
     def run(self):
+        if self.seeder is None:
+            return None
         self.seeds = self.seeder.cpp_module.seed(self.index, self.reads)
         return self.seeds
 
     def post(self):
+        x = 0
+        if not self.seeds is None:
+            for seeds in self.seeds:
+                x += len(seeds)
+        print("num seeds:", x)
         pass
         #for seed, read in zip(self.seeds, self.reads):
         #    seed.confirm_seed_positions(read, self.ref_pack, True)
@@ -778,24 +803,44 @@ def compareSeedSets(prefix, log_file_name, min_seed_length, do_smems=True,
 
     print("done")
 
-def seed_set_entropy(caller, prefix, log_file_name, with_single=False, time_steps=log_range):
+def seed_set_entropy(caller, prefix, log_file_name, with_paired=False, with_single=False, time_steps=log_range):
+    if x_axis_unit == "read_noise":
+        ref_pack = Pack()
+        ref_pack.load(reference_genome_path)
+        p_m = get_mmi_parameter_set()
+        mm_index = libMA.MinimizerIndex(p_m, prefix + "genomes/full.mmi")
+        fm_index = FMIndex()
+        fm_index.load(reference_genome_path)
     print(log_file_name, ": computing entropy of seed set...")
-    with open(prefix + "illumina_" + log_file_name, "w") as log_file:
-        log_file.write("index\tgenome size\tentropy\tpercent read covered on ref\n")
-        for idx, x in enumerate(time_steps()):
-            print(idx, "...")
-            caller.prep(x, prefix)
-            seeds = caller.run()
-            #q, n = get_seed_entropy(seeds, caller.reads, caller.ref_pack, True)
-            q = get_seed_entropy(seeds, caller.reads, caller.ref_pack, False)
-            print("entropy:", q)
-            log_file.write(str(idx) + "\t" + str(x) + "\t" + str(q) + "\t" + str(0) + "\n")
+    if with_paired:
+        with open(prefix + "illumina_" + log_file_name, "w") as log_file:
+            log_file.write("index\tgenome size\tentropy\tpercent read covered on ref\n")
+            for idx, x in enumerate(time_steps()):
+                print(idx, "...")
+                if x_axis_unit == "genome_section_size":
+                    caller.prep(x, prefix)
+                if x_axis_unit == "read_noise":
+                    reads_file_name = prefix + "reads/noise_" + str(x) + ".bwa.read1.fastq.gz"
+                    reads = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads_file_name)])) \
+                                .cpp_module.read_all()
+                    caller.prep_noise(ref_pack, reads, mm_index, fm_index, x)
+                seeds = caller.run()
+                #q, n = get_seed_entropy(seeds, caller.reads, caller.ref_pack, True)
+                q = get_seed_entropy(seeds, caller.reads, caller.ref_pack, False)
+                print("entropy:", q)
+                log_file.write(str(idx) + "\t" + str(x) + "\t" + str(q) + "\t" + str(0) + "\n")
     if with_single:
         with open(prefix + "pacb_" + log_file_name, "w") as log_file:
             log_file.write("index\tgenome size\tentropy\tpercent read covered on ref\n")
             for idx, x in enumerate(time_steps()):
                 print(idx, "...")
-                caller.prep(x, prefix, paired=False)
+                if x_axis_unit == "genome_section_size":
+                    caller.prep(x, prefix, paired=False)
+                if x_axis_unit == "read_noise":
+                    reads_file_name = prefix + "reads/noise_" + str(x) + ".fasta"
+                    reads = libMA.FileListReader(p_m, libMA.filePathVector([libMA.path(reads_file_name)])) \
+                                .cpp_module.read_all()
+                    caller.prep_noise(ref_pack, reads, mm_index, fm_index, x)
                 seeds = caller.run()
                 #q, n = get_seed_entropy(seeds, caller.reads, caller.ref_pack, True)
                 q = get_seed_entropy(seeds, caller.reads, caller.ref_pack, False)
@@ -887,22 +932,32 @@ def read_generation(time_steps=linear_range, backwards=False):
                              ref_pack.contigNames()).dump(prefix + "genomes/full.mmi")
     generate_reads(time_steps, prefix + "reads/", prefix + "genomes")
 
-def seed_entropy_analysis():
-    seed_set_entropy(ComputeMinimizers(), prefix, "minimizer_seed_entropy.tsv", True)
-    seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_seed_entropy.tsv", True)
-    seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
-                     "smem_"+str_msl+"_seed_entropy.tsv", True)
-    seed_set_entropy(MinimizerToSmem(min_seed_length=mem_size_large), prefix, "mmi_to_smem_seed_entropy.tsv", True)
-    seed_set_entropy(ExtendMinimizers(), prefix, "mem_seed_entropy.tsv", True)
-    seed_set_entropy(ExtendMinimizers(min_seed_length=mem_size_large), prefix, "mem_seed_entropy_"+str_msl+".tsv", True)
-    seed_set_entropy(MinimizerToMaxSpan(min_seed_length=mem_size_large), prefix,
-                                        "mini_to_max_sp_seed_entropy.tsv", True)
-    seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False),
-                     prefix, "max_sp_seed_entropy.tsv", True)
-    seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False), prefix,
-                                             "max_sp_"+str_msl+"_seed_entropy.tsv", True)
-    
-    render_times("Seed entropy - illumina", prefix, [
+def seed_entropy_analysis(w_paired=False, w_single=True, time_steps=linear_range):
+    if False:
+        seed_set_entropy(ComputeMinimizers(), prefix, "minimizer_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_seed_entropy.tsv",
+                                                w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
+                        "smem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(MinimizerToSmem(min_seed_length=mem_size_large), prefix, "mmi_to_smem_seed_entropy.tsv",
+                                        w_paired, w_single, time_steps)
+        seed_set_entropy(ExtendMinimizers(), prefix, "mem_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ExtendMinimizers(min_seed_length=mem_size_large), prefix, "mem_seed_entropy_"+str_msl+".tsv",
+                                            w_paired, w_single, time_steps)
+        seed_set_entropy(MinimizerToMaxSpan(min_seed_length=mem_size_large), prefix,
+                                            "mini_to_max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False),
+                        prefix, "max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False), prefix,
+                                                "max_sp_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True), prefix,
+                    "mem_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
+                    "mem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
+    if False:
+        render_times("Seed entropy - illumina", prefix, [
+                    [("MEMs l≥19", "illumina_mem_seed_entropy.tsv", "grey")],
+                    [("MEMs l≥"+str_msl, "illumina_mem_"+str_msl+"_seed_entropy.tsv", "black")],
                     [("SMEMs l≥"+str_mss, "illumina_smem_seed_entropy.tsv", "lightblue")],
                     [("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
                     [("Alg. 2a l≥"+str_msl+" (SMEMs)", "illumina_mmi_to_smem_seed_entropy.tsv", "pink")],
@@ -918,6 +973,8 @@ def seed_entropy_analysis():
                 #yAxisKey2="percent read covered on ref",
                 y_axis_log=False )
     render_times("Seed entropy - PacBio", prefix, [
+                        [("MEMs l≥19", "pacb_mem_seed_entropy.tsv", "grey")],
+                        [("MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_entropy.tsv", "black")],
                         [("SMEMs l≥19", "pacb_smem_seed_entropy.tsv", "lightblue")],
                         [("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
                         [("Alg. 2a l≥"+str_msl+" (SMEMs)", "pacb_mmi_to_smem_seed_entropy.tsv", "pink")],
@@ -931,78 +988,82 @@ def seed_entropy_analysis():
                     "pacb_seed_entropy",
                     yAxisKey="entropy",
                     #yAxisKey2="percent read covered on ref",
-                    y_axis_log=False )
+                    y_axis_log=True )
 
 
 def runtime_analysis():
     if x_axis_unit == "genome_section_size":
         measure_time(CreateFmdIndex(), prefix, "fm_index_construction.tsv")
         measure_time(CreateMinimizerIndex(), prefix, "minimizer_index_construction.tsv")
-
+    
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_computation.tsv", True)
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False), prefix,
                 "max_sp_seed_computation.tsv", True)
+    measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True), prefix,
+                "mem_seed_computation.tsv", True)
+
     measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
                 "smem_"+str_msl+"_computation.tsv", True)
     measure_time(ComputeMaxExtendedSeeds(do_smems=False, min_seed_length=mem_size_large), prefix,
                 "max_sp_"+str_msl+"_seed_computation.tsv", True)
+    measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
+                "mem_"+str_msl+"_seed_computation.tsv", True)
+            
     measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
     measure_time(MinimizerToSmem(), prefix, "minimizer_to_smem.tsv", True)
     measure_time(MinimizerToMaxSpan(), prefix, "minimizer_to_max_span.tsv", True)
     measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
-    measure_time(ExtendMinimizers(), prefix, "minimizer_extending.tsv", True)
     measure_time(ExtendThenSortMinimizers(), prefix, "extend_then_sort.tsv", True)
 
-    render_times("runtimes - illumina", prefix, [
-                    [("SMEMs l≥"+str_mss, "illumina_smem_computation.tsv", "blue")],
-                    [("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_computation.tsv", "lightblue")],
-                    [("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_computation.tsv", "green")],
-                    [("maximally spanning l≥"+str_msl, "illumina_max_sp_"+str_msl+"_seed_computation.tsv",
-                      "lightgreen")],
-
-                    [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
-                    ("Alg. 1 (lines 1-11)", "illumina_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 1 (lines 12-16)", "illumina_minimizer_extending.tsv", "yellow"),
-                    ("Alg. 2a (SMEMs)", "illumina_minimizer_to_smem.tsv", "pink")],
-
-                    [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
-                    ("Alg. 1 (lines 1-8)", "illumina_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 1 (lines 9-14)", "illumina_minimizer_extending.tsv", "yellow"),
-                    ("Alg. 2b (max. spanning)", "illumina_minimizer_to_max_span.tsv", "purple")],
-
-                    [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
-                     ("Extend-Filter", "illumina_extend_then_sort.tsv", "black")],
-                ],
-                "illumina_times",
-                divide_y_by=num_illumina_reads/1000 )
+    #render_times("runtimes - illumina", prefix, [
+    #                [("MEMs l≥"+str_mss, "illumina_mem_seed_computation.tsv", "yellow")],
+    #                [("SMEMs l≥"+str_mss, "illumina_smem_computation.tsv", "blue")],
+    #                [("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_computation.tsv", "lightblue")],
+    #                [("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_computation.tsv", "green")],
+    #                [("maximally spanning l≥"+str_msl, "illumina_max_sp_"+str_msl+"_seed_computation.tsv",
+    #                  "lightgreen")],
+    #
+    #                [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
+    #                ("Alg. 1", "illumina_minimizer_lumping.tsv", "orange"),
+    #                ("Alg. 2a (SMEMs)", "illumina_minimizer_to_smem.tsv", "pink")],
+    #
+    #                [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
+    #                ("Alg. 1", "illumina_minimizer_lumping.tsv", "orange"),
+    #                ("Alg. 2b (max. spanning)", "illumina_minimizer_to_max_span.tsv", "purple")],
+    #
+    #                [("10,19-minimizer", "illumina_minimizer_computation.tsv", "red"),
+    #                 ("Extend-Filter", "illumina_extend_then_sort.tsv", "black")],
+    #            ],
+    #            "illumina_times",
+    #            divide_y_by=num_illumina_reads/1000 )
     render_times("runtimes - PacBio", prefix, [
+                    [("MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "black")],
+                    [("MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "grey")],
                     [("SMEMs l≥"+str_mss, "pacb_smem_computation.tsv", "blue")],
                     [("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_computation.tsv", "lightblue")],
                     [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_computation.tsv", "green")],
                     [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_computation.tsv", "lightgreen")],
 
                     [("10,19-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                    ("Alg. 1 (lines 1-11)", "pacb_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 1 (lines 12-16)", "pacb_minimizer_extending.tsv", "yellow"),
+                    ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange"),
                     ("Alg. 2a (SMEMs)", "pacb_minimizer_to_smem.tsv", "pink")],
 
                     [("10,19-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                    ("Alg. 1 (lines 1-8)", "pacb_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 1 (lines 9-14)", "pacb_minimizer_extending.tsv", "yellow"),
+                    ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange"),
                     ("Alg. 2b (max. spanning)", "pacb_minimizer_to_max_span.tsv", "purple")],
 
                     [("10,19-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                     ("Extend-Filter", "pacb_extend_then_sort.tsv", "black")],
+                     ("Extend-Filter", "pacb_extend_then_sort.tsv", "yellow")],
                 ],
                 "pacb_times",
                 divide_y_by=num_pacb_reads/1000 )
-    render_times("runtime - index creation", prefix, [
-                    [("FMD-Index", "illumina_fm_index_construction.tsv", "blue")],
-                    [("10,19-minimizer Index", "illumina_minimizer_index_construction.tsv", "red")],
-                ],
-                "index_times",
-                y_axis_log=True,
-                divide_y_by=0.001 )
+    #render_times("runtime - index creation", prefix, [
+    #                [("FMD-Index", "illumina_fm_index_construction.tsv", "blue")],
+    #                [("10,19-minimizer Index", "illumina_minimizer_index_construction.tsv", "red")],
+    #            ],
+    #            "index_times",
+    #            y_axis_log=True,
+    #            divide_y_by=0.001 )
 
 def seed_set_diff_analysis():
     compareSeedSets(prefix, "seed_set_comparison.tsv", mem_size_small, with_single=True)
@@ -1040,7 +1101,7 @@ def seed_set_diff_analysis():
                          ("unique 10,19-minimizers", "unique max. spanning l≥"+str_msl, "shared seeds l≥"+str_msl),
                          divide_y_by=num_pacb_reads)
 
-read_generation()
-runtime_analysis()
-#seed_entropy_analysis()
+#read_generation()
+#runtime_analysis()
+seed_entropy_analysis()
 #seed_set_diff_analysis()

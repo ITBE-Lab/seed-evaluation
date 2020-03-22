@@ -5,7 +5,7 @@ import multiprocessing
 from config import *
 from bokeh.plotting import figure, show
 
-def create_illumina_reads_dwgsim(sequenced_genome_path, reads_folder, num_reads, name, read_length):
+def create_illumina_reads_dwgsim(sequenced_genome_path, reads_folder, num_reads, name, read_length, error_factor=1):
     print("\tdwgsim...")
     dwgsim_instances = []
     file_names1 = ""
@@ -17,7 +17,8 @@ def create_illumina_reads_dwgsim(sequenced_genome_path, reads_folder, num_reads,
     num_instances = 1#32
     for idx in range(num_instances):
         command = [dwgsim_str, "-1", str(read_length), "-2", str(read_length), "-N",
-                    str(int(num_reads/num_instances)),  "-o", "1", "-z", str(seed), sequenced_genome_path,
+                    str(int(num_reads/num_instances)), "-r", str(error_factor), "-o", "1", "-z",
+                    str(seed), sequenced_genome_path,
                     reads_folder + "part_" + str(idx) + name]
         dwgsim_instances.append(subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
         seed += 42 # increment the seed so that we have some different number every time
@@ -53,7 +54,7 @@ def gen_survivor_error_profile(out_file_name, in_file_name=survivor_error_profil
 def gen_survivor_error_profile_fac(out_file_name, fac=1):
     gen_survivor_error_profile(out_file_name + "_" + str(fac) + ".txt",
                                survivor_error_profile,
-                               p_mod=lambda x: 1 - (1 - x)**fac)
+                               p_mod=lambda x: 1 - (1 - x)*fac)
 
 def create_reads_survivor(sequenced_genome_path, reads_folder, num_reads, name, error_profile):
     print("\tsurvivor...")

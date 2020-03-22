@@ -18,8 +18,9 @@ num_illumina_reads = 10000
 illumina_read_size = 250
 
 survivor_str = "~/workspace/SURVIVOR/Debug/SURVIVOR simreads_n "
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
-num_pacb_reads = 1000
+#survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
+survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
+num_pacb_reads = 10#1000
 
 ##
 # @brief minimizers configuration
@@ -57,8 +58,8 @@ if x_axis_unit == "genome_section_size":
     num_steps = 100 # for full genome
 if x_axis_unit == "read_noise":
     start_size = 0
-    stop_size = 1.5
-    num_steps = 100
+    stop_size = 1.1
+    num_steps = 3 # 10
 
 ##
 # @brief save plots as svg files

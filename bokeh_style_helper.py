@@ -17,6 +17,7 @@ def color_scheme(idx):
         "pink" : "#b55475",
         "purple" : "#7153a1",
         "black": "#000000",
+        "grey": "#555555",
     }
     return colors[idx]
 
