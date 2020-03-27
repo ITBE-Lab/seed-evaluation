@@ -4,7 +4,7 @@ from MA import *
 # @brief output folder:
 # @note needs backslash at the end
 # folder must exist
-prefix = "/MAdata/transform_k_mers_into_smems/human_3/"
+prefix = "/MAdata/transform_k_mers_into_smems/human/"
 
 ##
 # @brief prefix of MA index
@@ -18,8 +18,8 @@ num_illumina_reads = 10000
 illumina_read_size = 250
 
 survivor_str = "~/workspace/SURVIVOR/Debug/SURVIVOR simreads_n "
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
-#survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
+#survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
+survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
 num_pacb_reads = 1000
 
 ##
@@ -64,4 +64,4 @@ if x_axis_unit == "read_noise":
 ##
 # @brief save plots as svg files
 # @note This requires selenium and phantomjs-prebuilt otherwise the application will crash
-save_plots = False
+save_plots = True
