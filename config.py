@@ -18,8 +18,7 @@ num_illumina_reads = 10000
 illumina_read_size = 250
 
 survivor_str = "~/workspace/SURVIVOR/Debug/SURVIVOR simreads_n "
-#survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
+survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
 num_pacb_reads = 1000
 
 ##
@@ -44,19 +43,18 @@ mem_size_large = 29
 str_msl = str(mem_size_large)
 
 
-x_axis_unit = "read_noise" # "genome_section_size"
+x_axis_unit = "read_noise" # or "genome_section_size" (to run the old analysis)
 
 
 if x_axis_unit == "genome_section_size":
     ##
-    # @brief x-axis configuration
+    # @brief x-axis configuration old analysis
     start_size = 1000
-    #stop_size = 10**7 # test section
-    #num_steps = 10 # for test section
-
-    stop_size = 3*10**9 # full genome
-    num_steps = 100 # for full genome
+    stop_size = 3*10**9
+    num_steps = 100
 if x_axis_unit == "read_noise":
+    ##
+    # @brief x-axis configuration new analysis
     start_size = 0
     stop_size = 1.1
     num_steps = 10
@@ -64,4 +62,4 @@ if x_axis_unit == "read_noise":
 ##
 # @brief save plots as svg files
 # @note This requires selenium and phantomjs-prebuilt otherwise the application will crash
-save_plots = True
+save_plots = False

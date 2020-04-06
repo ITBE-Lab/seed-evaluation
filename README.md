@@ -11,9 +11,9 @@ This repository contains the scripts for the experiments performed in
 | SURVIVOR | `git clone https://github.com/ITBE-Lab/SURVIVOR; cd SURVIVOR/Debug; make -j32; cd ..; unzip *.zip` | 1.0.5 | Tool for generating PacBio reads. (Modified by us, to generate specific amounts of reads.) |
 | Python 3 | `sudo apt-get install python3` | 3.5.3 | Python 3 environment. |
 | Bokeh | `sudo apt-get install python3-pip; pip3 install bokeh` | 1.4.0 | Plotting library. |
-| MA - The Modular Aligner | see below | 1.1.1-1f5a63f | C++ library needed by core evaluation scripts. |
+| MA - The Modular Aligner | see below | 1.1.1-82e2d78 | C++ library implementing all runtime critical code. |
 
-Our testing environment: Ubuntu 18.04.3 LTS.
+Our testing environment: Debian GNU/Linux with a 4.9.0 kernel.
 
 ## Installing MA - The Modular Aligner
 
@@ -21,7 +21,7 @@ The MA github page can be found [here](https://github.com/ITBE-Lab/MA "The Modul
 The following sequence of commands creates the MA library:
 ```
 git clone https://github.com/ITBE-Lab/MA
-git checkout 1f5a63f            # commit used for experiments
+git checkout 82e2d78            # commit used for experiments
 mkdir build
 cd build
 cmake -DWITH_PYTHON=ON ../MA/   # with python required for evaluation scripts
@@ -34,7 +34,7 @@ Type `./build/maCMD` for checking if MA was built successfully. \
 If you get an error during the cmake setup or compilation, here are some things that might have gone wrong:
 - MA is written in C++17, so you will need an appropriate compiler. We recommend GCC 6.3.0 or above.
 - Multiple Python 3 instances on your system can confuse cmake.
-- The export command (last line in the above script) is not persistent between different terminals and logins.
+- **The export command (last line in the above script) is not persistent between different terminals and logins.**
 
 ## Configuring the Python scripts
 
@@ -54,4 +54,4 @@ This will trigger 4 functions (very bottom of the script):
 - `seed_entropy_analysis`: Performs the entropy analysis (Figure 5 of the manuscript).
 - `seed_set_diff_analysis`: Performs the seed set difference analysis (Figure 3 of the manuscript).
 
-Tip: Double clicking on a plot will toggle its legend.
+Tip: Double clicking on a plot will toggle the legend visibility.

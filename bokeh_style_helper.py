@@ -54,3 +54,5 @@ def style_plot(plot):
     plot.js_on_event(events.DoubleTap, CustomJS(args=dict(other=plot.legend[0]),
              code="other.visible = !other.visible;"
     ))
+
+    # plot.plot_height = 365 # half high plots

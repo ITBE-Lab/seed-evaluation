@@ -105,14 +105,15 @@ def generate_reads(time_steps, out_prefix, genome_prefix):
             dwgsim.create_reads_survivor(genome_prefix + "/slice_" + str(x) + ".fasta", out_prefix, num_pacb_reads,
                                         "slice_" + str(x), survivor_error_profile)
         if x_axis_unit == "read_noise":
-            if False:
+            if True:
                 dwgsim.create_illumina_reads_dwgsim(reference_genome_fasta, out_prefix, num_illumina_reads,
                                                     "noise_" + str(x), illumina_read_size, error_factor=x )
-            dwgsim.create_reads_survivor(reference_genome_fasta, out_prefix, num_pacb_reads,
-                                        "noise_" + str(x), prefix + "profiles/pacb_" + str(x) + ".txt")
+            if True:
+                dwgsim.create_reads_survivor(reference_genome_fasta, out_prefix, num_pacb_reads,
+                                            "noise_" + str(x), prefix + "profiles/pacb_" + str(x) + ".txt")
     print("done")
 
-def measure_time_section_size(caller, prefix, log_file_name, with_single=False, time_steps=log_range):
+def measure_time_section_size(caller, prefix, log_file_name, with_single=True, time_steps=log_range):
     print(log_file_name, ": measuring time...")
     with open(prefix + "illumina_" + log_file_name, "w") as log_file:
         log_file.write("index\tgenome size\truntime\n")
@@ -140,7 +141,7 @@ def measure_time_section_size(caller, prefix, log_file_name, with_single=False, 
 
     print("done")
 
-def measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_single=False, time_steps=linear_range):
+def measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_single=True, time_steps=linear_range):
     ref_pack = Pack()
     ref_pack.load(reference_genome_path)
     p_m = get_mmi_parameter_set()
@@ -195,7 +196,7 @@ def measure_time(caller, prefix, log_file_name, with_single=False):
         measure_time_noise(caller, prefix, log_file_name, with_paired=False, with_single=with_single)
 
 def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_axis_log=False, yAxisKey2=None,
-                 yAxisKeyDivident=None, divide_y_by=1):
+                 yAxisKeyDivident=None, divide_y_by=1, y_range=None):
     xAxes = []
     yAxes = []
     legends = []
@@ -225,18 +226,19 @@ def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_ax
     reset_output()
     if x_axis_unit == "genome_section_size":
         if y_axis_log:
-            plot = figure(title=title, x_axis_type="log", y_axis_type="log")
+            plot = figure(title=title, x_axis_type="log", y_axis_type="log", y_range=y_range)
         else:
-            plot = figure(title=title, x_axis_type="log")
+            plot = figure(title=title, x_axis_type="log", y_range=y_range)
     else:
         if y_axis_log:
-            plot = figure(title=title, y_axis_type="log")
+            plot = figure(title=title, y_axis_type="log", y_range=y_range)
         else:
-            plot = figure(title=title)
+            plot = figure(title=title, y_range=y_range)
     step = 1 if yAxisKey2 is None else 2
     for yAxis, xAxis, legend, color in zip(yAxes[::step], xAxes, legends, colors):
+        print(xAxis, yAxis)
         plot.line(x=xAxis, y=yAxis, legend_label=legend, line_color=color, line_width=point_to_px(4))
-        plot.x(x=xAxis, y=yAxis, legend_label=legend, line_color=color, line_width=point_to_px(4))
+        plot.x(x=xAxis, y=yAxis, legend_label=legend, line_color=color, size=point_to_px(7), line_width=point_to_px(2))
         #plot.x(x=xAxis, y=yAxis, legend_label=legend, color=color)
     if not yAxisKey2 is None:
         for yAxis, xAxis, color in zip(yAxes[1::2], xAxes, colors):
@@ -925,7 +927,7 @@ def seed_set_entropy(caller, prefix, log_file_name, with_paired=False, with_sing
     print("done")
 
 def render_seed_set_comp(title, prefix, file_name, names,
-                         divide_y_by=1):
+                         divide_y_by=1, y_range=None):
     xAxes = []
     yAxes = []
     legends = []
@@ -969,11 +971,12 @@ def render_seed_set_comp(title, prefix, file_name, names,
 
     reset_output()
     if x_axis_unit == "genome_section_size":
-        plot = figure(title=title, x_axis_type="log")
+        plot = figure(title=title, x_axis_type="log", y_range=y_range)
     if x_axis_unit == "read_noise":
-        plot = figure(title=title)
+        plot = figure(title=title, y_range=y_range)
     for yAxis, xAxis, legend, color in zip(yAxes, xAxes, legends, colors):
         plot.line(x=xAxis, y=yAxis, legend_label=legend, line_color=color, line_width=point_to_px(4))
+        plot.x(x=xAxis, y=yAxis, legend_label=legend, line_color=color, size=point_to_px(7), line_width=point_to_px(2))
         #plot.x(x=xAxis, y=yAxis, legend_label=legend, color=color)
     plot.legend.location = "top_left"
     if x_axis_unit == "genome_section_size":
@@ -991,9 +994,10 @@ def render_seed_set_comp(title, prefix, file_name, names,
     if x_axis_unit == "genome_section_size":
         plot = figure(title=title, x_axis_type="log")
     if x_axis_unit == "read_noise":
-        plot = figure(title=title)
+        plot = figure(title=title, y_range=(-1,30))
     for yAxis, xAxis, legend, color in zip(yAxes2, xAxes2, legends2, colors2):
         plot.line(x=xAxis, y=yAxis, legend_label=legend, line_color=color, line_width=point_to_px(4))
+        plot.x(x=xAxis, y=yAxis, legend_label=legend, line_color=color, size=point_to_px(7), line_width=point_to_px(2))
         #plot.x(x=xAxis, y=yAxis, legend_label=legend, color=color)
     plot.legend.location = "top_left"
     if x_axis_unit == "genome_section_size":
@@ -1019,7 +1023,7 @@ def read_generation(time_steps=linear_range, backwards=False):
                              ref_pack.contigNames()).dump(prefix + "genomes/full.mmi")
     generate_reads(time_steps, prefix + "reads/", prefix + "genomes")
 
-def seed_entropy_analysis(w_paired=False, w_single=True, time_steps=linear_range):
+def seed_entropy_analysis(w_paired=True, w_single=True, time_steps=linear_range):
     if True:
         seed_set_entropy(ComputeMinimizers(), prefix, "minimizer_seed_entropy.tsv", w_paired, w_single, time_steps)
         seed_set_entropy(ExtendMinimizers(), prefix, "mem_seed_entropy.tsv", w_paired, w_single, time_steps)
@@ -1043,19 +1047,19 @@ def seed_entropy_analysis(w_paired=False, w_single=True, time_steps=linear_range
                     "fmd_mem_seed_entropy.tsv", w_paired, w_single, time_steps)
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
                     "fmd_mem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
-    if False:
+    if True:
         render_times("Seed entropy - illumina", prefix, [
                     [("MEMs l≥19", "illumina_fmd_mem_seed_entropy.tsv", "grey")],
                     [("MEMs l≥"+str_msl, "illumina_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
                     [("SMEMs l≥"+str_mss, "illumina_smem_seed_entropy.tsv", "lightblue")],
                     [("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
+                    [("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_entropy.tsv", "lightgreen")],
+                    [("maximally spanning l≥"+str_msl+"", "illumina_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
                     [("Alg. 2a l≥"+str_mss+" (SMEMs)", "illumina_mmi_to_smem_seed_entropy.tsv", "pink")],
                     [("Alg. 1 l≥"+str_mss+" (MEMs)", "illumina_mem_seed_entropy.tsv", "orange")],
                     [("Alg. 1 l≥"+str_msl+" (MEMs)", "illumina_mem_seed_entropy_"+str_msl+".tsv", "yellow")],
                     [(str_mm+"-minimizer", "illumina_minimizer_seed_entropy.tsv", "red")],
                     [("Alg. 2b l≥"+str_mss+" (max. spanning)", "illumina_mini_to_max_sp_seed_entropy.tsv", "purple")],
-                    [("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_entropy.tsv", "lightgreen")],
-                    [("maximally spanning l≥"+str_msl+"", "illumina_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
                 ], 
                 "illumina_seed_entropy",
                 yAxisKey="entropy",
@@ -1063,35 +1067,35 @@ def seed_entropy_analysis(w_paired=False, w_single=True, time_steps=linear_range
                 y_axis_log=True )
     if True:
         render_times("Seed entropy - PacBio", prefix, [
-                            [("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
-                            [("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
-                            [("SMEMs l≥"+str_mss, "pacb_smem_seed_entropy.tsv", "lightblue")],
-                            [("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
+                            #[("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
+                            #[("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
+                            #[("SMEMs l≥"+str_mss, "pacb_smem_seed_entropy.tsv", "lightblue")],
+                            #[("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
+                            #[("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_entropy.tsv", "lightgreen")],
+                            #[("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
                             [("Alg. 2a l≥"+str_mss+" (SMEMs)", "pacb_mmi_to_smem_seed_entropy.tsv", "pink")],
                             [("Alg. 1 l≥"+str_mss+" (MEMs)", "pacb_mem_seed_entropy.tsv", "orange")],
                             [("Alg. 1 l≥"+str_msl+" (MEMs)", "pacb_mem_seed_entropy_"+str_msl+".tsv", "yellow")],
                             [(str_mm+"-minimizer", "pacb_minimizer_seed_entropy.tsv", "red")],
                             [("Alg. 2b l≥"+str_mss+" (max. spanning)", "pacb_mini_to_max_sp_seed_entropy.tsv", "purple")],
-                            [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_entropy.tsv", "lightgreen")],
-                            [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
                         ],
                         "pacb_seed_entropy",
                         yAxisKey="entropy",
                         #yAxisKey2="percent read covered on ref",
                         y_axis_log=True )
-    if False:
-        render_times("Seed entropy - PacBio", prefix, [
-                            [("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
-                            [("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
-                            [("SMEMs l≥"+str_mss, "pacb_smem_seed_entropy.tsv", "lightblue")],
-                            [("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
+    if True:
+        render_times("Seed entropy ratio - PacBio", prefix, [
+                            #[("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
+                            #[("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
+                            #[("SMEMs l≥"+str_mss, "pacb_smem_seed_entropy.tsv", "lightblue")],
+                            #[("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
+                            #[("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_entropy.tsv", "lightgreen")],
+                            #[("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
                             [("Alg. 2a l≥"+str_mss+" (SMEMs)", "pacb_mmi_to_smem_seed_entropy.tsv", "pink")],
                             [("Alg. 1 l≥"+str_mss+" (MEMs)", "pacb_mem_seed_entropy.tsv", "orange")],
                             [("Alg. 1 l≥"+str_msl+" (MEMs)", "pacb_mem_seed_entropy_"+str_msl+".tsv", "yellow")],
                             [(str_mm+"-minimizer", "pacb_minimizer_seed_entropy.tsv", "red")],
                             [("Alg. 2b l≥"+str_mss+" (max. spanning)", "pacb_mini_to_max_sp_seed_entropy.tsv", "purple")],
-                            [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_entropy.tsv", "lightgreen")],
-                            [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
                         ],
                         "pacb_seed_entropy_ratio",
                         yAxisKey="entropy",
@@ -1104,7 +1108,7 @@ def runtime_analysis():
     if x_axis_unit == "genome_section_size":
         measure_time(CreateFmdIndex(), prefix, "fm_index_construction.tsv")
         measure_time(CreateMinimizerIndex(), prefix, "minimizer_index_construction.tsv")
-    if False:
+    if True:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False), prefix,
                     "max_sp_seed_computation.tsv", True)
@@ -1118,16 +1122,39 @@ def runtime_analysis():
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
                     "mem_"+str_msl+"_seed_computation.tsv", True)
                 
-        measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
         measure_time(MinimizerToSmem(), prefix, "minimizer_to_smem.tsv", True)
         measure_time(MinimizerToMaxSpan(), prefix, "minimizer_to_max_span.tsv", True)
+    if True:
+        #measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
         measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
         measure_time(ExtendThenSortMinimizers(), prefix, "extend_then_sort.tsv", True)
 
-    if False:
+    if True:
         render_times("runtimes - illumina", prefix, [
-                        [("MEMs l≥"+str_mss, "illumina_mem_seed_computation.tsv", "black")],
-                        [("MEMs l≥"+str_msl, "illumina_mem_"+str_msl+"_seed_computation.tsv", "grey")],
+                        #[("MEMs l≥"+str_mss, "illumina_mem_seed_computation.tsv", "black")],
+                        #[("MEMs l≥"+str_msl, "illumina_mem_"+str_msl+"_seed_computation.tsv", "grey")],
+                        #[("SMEMs l≥"+str_mss, "illumina_smem_computation.tsv", "blue")],
+                        #[("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_computation.tsv", "lightblue")],
+                        #[("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_computation.tsv", "green")],
+                        #[("maximally spanning l≥"+str_msl, "illumina_max_sp_"+str_msl+"_seed_computation.tsv",
+                        #"lightgreen")],
+        
+                        #[(str_mm+"-minimizer", "illumina_minimizer_computation.tsv", "red"),
+                        #("Alg. 1", "illumina_minimizer_lumping.tsv", "orange"),
+                        #("Alg. 2a (SMEMs)", "illumina_minimizer_to_smem.tsv", "pink")],
+        
+                        [#(str_mm+"-minimizer", "illumina_minimizer_computation.tsv", "red"),
+                        ("Alg. 1", "illumina_minimizer_lumping.tsv", "orange")
+                        #,("Alg. 2b (max. spanning)", "illumina_minimizer_to_max_span.tsv", "purple")
+                        ],
+        
+                        [#(str_mm+"-minimizer", "illumina_minimizer_computation.tsv", "red"),
+                        ("Extend-Filter", "illumina_extend_then_sort.tsv", "yellow")],
+                    ],
+                    "illumina_times",
+                    divide_y_by=num_illumina_reads/1000 )
+    if True:
+        render_times("runtimes - illumina", prefix, [
                         [("SMEMs l≥"+str_mss, "illumina_smem_computation.tsv", "blue")],
                         [("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_computation.tsv", "lightblue")],
                         [("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_computation.tsv", "green")],
@@ -1145,29 +1172,33 @@ def runtime_analysis():
                         [(str_mm+"-minimizer", "illumina_minimizer_computation.tsv", "red"),
                         ("Extend-Filter", "illumina_extend_then_sort.tsv", "yellow")],
                     ],
-                    "illumina_times",
+                    "illumina_times_2",
                     divide_y_by=num_illumina_reads/1000 )
-    render_times("runtimes - PacBio", prefix, [
-                    #[("MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "black")],
-                    #[("MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "grey")],
-                    #[("SMEMs l≥"+str_mss, "pacb_smem_computation.tsv", "blue")],
-                    #[("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_computation.tsv", "lightblue")],
-                    #[("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_computation.tsv", "green")],
-                    #[("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_computation.tsv", "lightgreen")],
+    if True:
+        render_times("runtimes - PacBio", prefix, [
+                        [("MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "black")],
+                        [("MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "grey")],
+                        [("SMEMs l≥"+str_mss, "pacb_smem_computation.tsv", "blue")],
+                        [("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_computation.tsv", "lightblue")],
+                        [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_computation.tsv", "green")],
+                        [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_computation.tsv", "lightgreen")],
 
-                    [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                    ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 2a (SMEMs)", "pacb_minimizer_to_smem.tsv", "pink")],
+                        [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
+                        ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange")
+                        ,("Alg. 2a (SMEMs)", "pacb_minimizer_to_smem.tsv", "pink")
+                        ],
 
-                    [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                    ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange"),
-                    ("Alg. 2b (max. spanning)", "pacb_minimizer_to_max_span.tsv", "purple")],
+                        [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
+                        ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange"),
+                        ("Alg. 2b (max. spanning)", "pacb_minimizer_to_max_span.tsv", "purple")],
 
-                    [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
-                     ("Extend-Filter", "pacb_extend_then_sort.tsv", "yellow")],
-                ],
-                "pacb_times",
-                divide_y_by=num_pacb_reads/1000 )
+                        [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
+                        ("Extend-Filter", "pacb_extend_then_sort.tsv", "yellow")],
+                    ],
+                    "pacb_times",
+                    divide_y_by=num_pacb_reads/1000
+                    #,y_range=(-1,30)
+                     )
     #render_times("runtime - index creation", prefix, [
     #                [("FMD-Index", "illumina_fm_index_construction.tsv", "blue")],
     #                [("10,19-minimizer Index", "illumina_minimizer_index_construction.tsv", "red")],
@@ -1177,43 +1208,44 @@ def runtime_analysis():
     #            divide_y_by=0.001 )
 
 def seed_set_diff_analysis():
-    if False:
+    if True:
         compareSeedSets(prefix, "seed_set_comparison.tsv", mem_size_small, with_single=True)
         compareSeedSets(prefix, "seed_set_comparison_"+str_msl+".tsv", mem_size_large, with_single=True)
         compareSeedSets(prefix, "seed_set_comparison_max_sp.tsv", mem_size_small, do_smems=False, with_single=True)
         compareSeedSets(prefix, "seed_set_comparison_max_sp_"+str_msl+".tsv", mem_size_large, do_smems=False,
                         with_single=True)
 
-    if False:
+    if True:
         render_seed_set_comp("seed set comparison - illumina", prefix, "illumina_seed_set_comparison.tsv",
                             ("unique "+str_mm+"-minimizers", "unique SMEMs l≥"+str_mss, "shared seeds l≥"+str_mss),
-                            divide_y_by=num_illumina_reads)
+                            divide_y_by=num_illumina_reads, y_range=(0,11))
         render_seed_set_comp("seed set comparison - illumina", prefix, "illumina_seed_set_comparison_"+str_msl+".tsv",
-                            ("unique "+str_mm+"-minimizers", "unique SMEMs l≥"+str_msl+"", "shared seeds l≥"+str_msl), divide_y_by=num_illumina_reads)
+                            ("unique "+str_mm+"-minimizers", "unique SMEMs l≥"+str_msl+"", "shared seeds l≥"+str_msl), divide_y_by=num_illumina_reads, y_range=(0,11))
         render_seed_set_comp("seed set comparison - illumina", prefix,
                             "illumina_seed_set_comparison_max_sp.tsv",
                             ("unique "+str_mm+"-minimizers", "unique max. spanning l≥"+str_mss, "shared seeds l≥"+str_mss),
-                            divide_y_by=num_illumina_reads)
+                            divide_y_by=num_illumina_reads, y_range=(0,11))
         render_seed_set_comp("seed set comparison - illumina", prefix,
                             "illumina_seed_set_comparison_max_sp_"+str_msl+".tsv",
                             ("unique "+str_mm+"-minimizers", "unique max. spanning l≥"+str_msl, "shared seeds l≥"+str_msl),
-                            divide_y_by=num_illumina_reads)
+                            divide_y_by=num_illumina_reads, y_range=(0,11))
 
     if True:
         render_seed_set_comp("seed set comparison - pacBio", prefix, "pacb_seed_set_comparison.tsv",
                             ("unique "+str_mm+"-minimizers", "unique SMEMs l≥"+str_mss, "shared seeds l≥"+str_mss),
-                            divide_y_by=num_pacb_reads)
+                            divide_y_by=num_pacb_reads, y_range=(-42, 922))
         render_seed_set_comp("seed set comparison - pacBio", prefix, "pacb_seed_set_comparison_"+str_msl+".tsv",
-                            ("unique "+str_mm+"-minimizers", "unique SMEMs l≥"+str_msl, "shared seeds l≥"+str_msl), divide_y_by=num_pacb_reads)
+                            ("unique "+str_mm+"-minimizers", "unique SMEMs l≥"+str_msl, "shared seeds l≥"+str_msl), divide_y_by=num_pacb_reads, y_range=(-42, 922))
+    if True:
         render_seed_set_comp("seed set comparison - pacBio", prefix, "pacb_seed_set_comparison_max_sp.tsv",
                             ("unique "+str_mm+"-minimizers", "unique max. spanning l≥"+str_mss, "shared seeds l≥"+str_mss),
-                            divide_y_by=num_pacb_reads)
+                            divide_y_by=num_pacb_reads, y_range=(0, 800))
         render_seed_set_comp("seed set comparison - pacBio", prefix,
                             "pacb_seed_set_comparison_max_sp_"+str_msl+".tsv",
                             ("unique "+str_mm+"-minimizers", "unique max. spanning l≥"+str_msl, "shared seeds l≥"+str_msl),
-                            divide_y_by=num_pacb_reads)
+                            divide_y_by=num_pacb_reads, y_range=(0, 800))
 
-#read_generation()
+read_generation()
 runtime_analysis()
-#seed_entropy_analysis()
-#seed_set_diff_analysis()
+seed_entropy_analysis()
+seed_set_diff_analysis()
