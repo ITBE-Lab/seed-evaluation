@@ -11,7 +11,7 @@ This repository contains the scripts for the experiments performed in
 | SURVIVOR | `git clone https://github.com/ITBE-Lab/SURVIVOR; cd SURVIVOR/Debug; make -j32; cd ..; unzip *.zip` | 1.0.5 | Tool for generating PacBio reads. (Modified by us, to generate specific amounts of reads.) |
 | Python 3 | `sudo apt-get install python3` | 3.5.3 | Python 3 environment. |
 | Bokeh | `sudo apt-get install python3-pip; pip3 install bokeh` | 1.4.0 | Plotting library. |
-| MA - The Modular Aligner | see below | 1.1.1-82e2d78 | C++ library implementing all runtime critical code. |
+| MA - The Modular Aligner | see below | 1.1.1-b7cf5e7 | C++ library implementing all runtime critical code. |
 
 Our testing environment: Debian GNU/Linux with a 4.9.0 kernel.
 
@@ -21,7 +21,7 @@ The MA github page can be found [here](https://github.com/ITBE-Lab/MA "The Modul
 The following sequence of commands creates the MA library:
 ```
 git clone https://github.com/ITBE-Lab/MA
-git checkout 82e2d78            # commit used for experiments
+git checkout b7cf5e7            # commit used for experiments
 mkdir build
 cd build
 cmake -DWITH_PYTHON=ON ../MA/   # with python required for evaluation scripts
