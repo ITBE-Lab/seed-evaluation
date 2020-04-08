@@ -7,8 +7,8 @@ This repository contains the scripts for the experiments performed in
 | Name | Linux install command | Recommended version | Remarks |
 |------|-----------------------|---------------------|-------------|
 | This repo | `git clone https://github.com/ITBE-Lab/seed-evaluation` | latest | Core evaluation scripts. |
-| DWGSIM | `sudo apt-get install zlib1g-dev; git clone --recursive https://github.com/nh13/DWGSIM; make -j32` | 0.1.11 | Tool for generating Illumina reads. |
-| SURVIVOR | `git clone https://github.com/ITBE-Lab/SURVIVOR; cd SURVIVOR/Debug; make -j32; cd ..; unzip *.zip` | 1.0.5 | Tool for generating PacBio reads. (Modified by us, to generate specific amounts of reads.) |
+| DWGSIM | `sudo apt-get install zlib1g-dev; sudo apt-get install libncurses5-dev; git clone --recursive https://github.com/nh13/DWGSIM; make -j$(nproc)` | 0.1.11 | Tool for generating Illumina reads. |
+| SURVIVOR | `git clone https://github.com/ITBE-Lab/SURVIVOR; cd SURVIVOR/Debug; make -j$(nproc); cd ..; unzip *.zip` | 1.0.5 | Tool for generating PacBio reads. (Modified by us, to generate specific amounts of reads.) |
 | Python 3 | `sudo apt-get install python3` | 3.5.3 | Python 3 environment. |
 | Bokeh | `sudo apt-get install python3-pip; pip3 install bokeh` | 1.4.0 | Plotting library. |
 | MA - The Modular Aligner | see below | 1.1.1-b7cf5e7 | C++ library implementing all runtime critical code. |
@@ -25,7 +25,7 @@ git checkout b7cf5e7            # commit used for experiments
 mkdir build
 cd build
 cmake -DWITH_PYTHON=ON ../MA/   # with python required for evaluation scripts
-make -j32
+make -j$(nproc)
 cd ..
 export PYTHONPATH=$PYTHONPATH:`pwd`/build:`pwd`/MA/python   # setup system environment
 ```
