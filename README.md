@@ -12,6 +12,7 @@ This repository contains the scripts for the experiments performed in
 | Python 3 | `sudo apt-get install python3` | 3.5.3 | Python 3 environment. |
 | Bokeh | `sudo apt-get install python3-pip; pip3 install bokeh` | 1.4.0 | Plotting library. |
 | MA - The Modular Aligner | see below | 1.1.1-b7cf5e7 | C++ library implementing all runtime critical code. |
+| cmake | `sudo apt-get install cmake` | 3.13.2 | Compiling MA. |
 
 Our testing environment: Debian GNU/Linux with a 4.9.0 kernel.
 
