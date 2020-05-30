@@ -13,6 +13,8 @@ from runBackwardMEMOhlebusch import *
 str_mm = str(get_mmi_parameter_set().by_name("Minimizer Window Size").get()) + "," + \
          str(get_mmi_parameter_set().by_name("Minimizer Size").get())
 
+local_max_ambiguity_fmd = max_ambiguity_fmd
+
 def create_genome_of_size(ref_pack, size, backwards=False):
     print("size:", size)
     contig_id = 0
@@ -89,11 +91,12 @@ def generate_genomes(time_steps, ref_pack, out_prefix, backwards=False):
                     idx += 50
     print("done")
 
-def generate_profiles(time_steps):
+def generate_profiles(time_steps, survivor_error_profile=survivor_error_profile):
     set_up_folders()
     print("generating profiles...")
     for idx, x in enumerate(time_steps()):
-        dwgsim.gen_survivor_error_profile_fac(prefix + "profiles/pacb", fac=x)
+        dwgsim.gen_survivor_error_profile_fac(prefix + "profiles/pacb", fac=x,
+                                              survivor_error_profile=survivor_error_profile)
     print("done")
 
 def generate_reads(time_steps, out_prefix, genome_prefix):
@@ -106,7 +109,7 @@ def generate_reads(time_steps, out_prefix, genome_prefix):
             dwgsim.create_reads_survivor(genome_prefix + "/slice_" + str(x) + ".fasta", out_prefix, num_pacb_reads,
                                         "slice_" + str(x), survivor_error_profile)
         if x_axis_unit == "read_noise":
-            if True:
+            if False:
                 dwgsim.create_illumina_reads_dwgsim(reference_genome_fasta, out_prefix, num_illumina_reads,
                                                     "noise_" + str(x), illumina_read_size, error_factor=x )
             if True:
@@ -190,7 +193,7 @@ def measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_sin
     print("done")
 
 
-def measure_time(caller, prefix, log_file_name, with_single=True):
+def measure_time(caller, prefix, log_file_name, with_single=False):
     if x_axis_unit == "genome_section_size":
         measure_time_section_size(caller, prefix, log_file_name, with_single=with_single)
     if x_axis_unit == "read_noise":
@@ -298,6 +301,8 @@ def get_seed_entropy(seeds_list, reads, pack, also_return_percent_covered=False,
     if seeds_list is None:
         if also_return_percent_covered:
             return float("NaN"), 0
+        if return_seeds_in_area:
+            return 0, 0
         return 0
     read_pos = get_read_positions(reads, pack)
     # accumulated overlap with read region
@@ -339,6 +344,8 @@ def get_seed_entropy(seeds_list, reads, pack, also_return_percent_covered=False,
         #    return 0
         #return hits / (num_nuc + hits)
         if num_seeds == 0:
+            if return_seeds_in_area:
+                return 0, 0
             return 0
         if return_seeds_in_area:
             return seed_hits / num_seeds, hits / num_seeds
@@ -362,7 +369,7 @@ class CreateMinimizerIndex:
 
     def run(self):
         self.index = libMA.MinimizerIndex(self.p_m, self.contigs, self.contig_names)
-        self.index.set_mid_occ(max_ambiguity_fmd)
+        self.index.set_mid_occ(local_max_ambiguity_fmd)
 
     def post(self):
         self.index.dump(self.genome_prefix + ".mmi")
@@ -380,7 +387,7 @@ class ComputeMinimizers:
         self.ref_pack.load(prefix + "genomes/slice_" + str(x))
         p_m = get_mmi_parameter_set()
         self.index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
-        self.index.set_mid_occ(max_ambiguity_fmd)
+        self.index.set_mid_occ(local_max_ambiguity_fmd)
         if paired:
             reads1 = prefix + "reads/slice_" + str(x) + ".bwa.read1.fastq.gz"
             reads2 = prefix + "reads/slice_" + str(x) + ".bwa.read2.fastq.gz"
@@ -423,7 +430,7 @@ class LumpMinimizers:
         self.ref_pack.load(prefix + "genomes/slice_" + str(x))
         p_m = get_mmi_parameter_set()
         index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
-        self.index.set_mid_occ(max_ambiguity_fmd)
+        self.index.set_mid_occ(local_max_ambiguity_fmd)
         if paired:
             reads1 = prefix + "reads/slice_" + str(x) + ".bwa.read1.fastq.gz"
             reads2 = prefix + "reads/slice_" + str(x) + ".bwa.read2.fastq.gz"
@@ -472,7 +479,7 @@ class ExtendMinimizers:
         self.ref_pack.load(prefix + "genomes/slice_" + str(x))
         p_m = get_mmi_parameter_set()
         index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
-        self.index.set_mid_occ(max_ambiguity_fmd)
+        self.index.set_mid_occ(local_max_ambiguity_fmd)
         if paired:
             reads1 = prefix + "reads/slice_" + str(x) + ".bwa.read1.fastq.gz"
             reads2 = prefix + "reads/slice_" + str(x) + ".bwa.read2.fastq.gz"
@@ -527,7 +534,7 @@ class ExtendThenSortMinimizers:
         self.ref_pack.load(prefix + "genomes/slice_" + str(x))
         p_m = get_mmi_parameter_set()
         index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
-        self.index.set_mid_occ(max_ambiguity_fmd)
+        self.index.set_mid_occ(local_max_ambiguity_fmd)
         if paired:
             reads1 = prefix + "reads/slice_" + str(x) + ".bwa.read1.fastq.gz"
             reads2 = prefix + "reads/slice_" + str(x) + ".bwa.read2.fastq.gz"
@@ -576,7 +583,7 @@ class MinimizerToSmem:
         self.ref_pack.load(prefix + "genomes/slice_" + str(x))
         p_m = get_mmi_parameter_set()
         index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
-        self.index.set_mid_occ(max_ambiguity_fmd)
+        self.index.set_mid_occ(local_max_ambiguity_fmd)
         if paired:
             reads1 = prefix + "reads/slice_" + str(x) + ".bwa.read1.fastq.gz"
             reads2 = prefix + "reads/slice_" + str(x) + ".bwa.read2.fastq.gz"
@@ -638,7 +645,7 @@ class MinimizerToMaxSpan:
         self.ref_pack.load(prefix + "genomes/slice_" + str(x))
         p_m = get_mmi_parameter_set()
         index = libMA.MinimizerIndex(p_m, prefix + "genomes/slice_" + str(x) + ".mmi")
-        self.index.set_mid_occ(max_ambiguity_fmd)
+        self.index.set_mid_occ(local_max_ambiguity_fmd)
         if paired:
             reads1 = prefix + "reads/slice_" + str(x) + ".bwa.read1.fastq.gz"
             reads2 = prefix + "reads/slice_" + str(x) + ".bwa.read2.fastq.gz"
@@ -692,15 +699,18 @@ class ComputeMEMs:
         self.reads_file_name = None
         self.ref_seq_filename = ref_seq_filename
         self.min_seed_length = min_seed_length
+        self.x = 1
 
     def prep(self, x, prefix, paired=True):
         raise Exception("unimplemented")
 
     def prep_noise(self, ref_pack, reads, mm_index, fm_index, x, reads_file_name):
+        self.x = x
         self.reads_file_name = reads_file_name
 
     def run(self):
-        backwardMEM(self.ref_seq_filename, self.reads_file_name, self.min_seed_length)
+        if self.x > 0.2:
+            backwardMEM(self.ref_seq_filename, self.reads_file_name, self.min_seed_length)
         return []
 
     def post(self):
@@ -729,7 +739,7 @@ class ComputeMaxExtendedSeeds:
             p_m.by_name("Seeding Technique").set(2)
         print("Seeding Technique =", p_m.by_name("Seeding Technique").get())
         p_m.by_name("Minimal Seed Length").set(self.min_seed_length)
-        p_m.by_name("Maximal Ambiguity").set(max_ambiguity_fmd)
+        p_m.by_name("Maximal Ambiguity").set(local_max_ambiguity_fmd)
         self.index = FMIndex()
         self.index.load(prefix + "genomes/slice_" + str(x))
         if paired:
@@ -752,7 +762,7 @@ class ComputeMaxExtendedSeeds:
             p_m.by_name("Seeding Technique").set(2)
         print("Seeding Technique =", p_m.by_name("Seeding Technique").get())
         p_m.by_name("Minimal Seed Length").set(self.min_seed_length)
-        p_m.by_name("Maximal Ambiguity").set(max_ambiguity_fmd)
+        p_m.by_name("Maximal Ambiguity").set(local_max_ambiguity_fmd)
         self.index = fm_index
         self.reads = reads
         if x > 0.2 or not self.do_mems:
@@ -814,7 +824,7 @@ def compareSeedSets(prefix, log_file_name, min_seed_length, do_smems=True,
         ref_pack.load(reference_genome_path)
         p_m = get_mmi_parameter_set()
         mm_index = libMA.MinimizerIndex(p_m, prefix + "genomes/full.mmi")
-        mm_index.set_mid_occ(max_ambiguity_fmd)
+        mm_index.set_mid_occ(local_max_ambiguity_fmd)
         fm_index = FMIndex()
         fm_index.load(reference_genome_path)
     if do_smems:
@@ -918,7 +928,7 @@ def seed_set_entropy(caller, prefix, log_file_name, with_paired=True, with_singl
         ref_pack.load(reference_genome_path)
         p_m = get_mmi_parameter_set()
         mm_index = libMA.MinimizerIndex(p_m, prefix + "genomes/full.mmi")
-        mm_index.set_mid_occ(max_ambiguity_fmd)
+        mm_index.set_mid_occ(local_max_ambiguity_fmd)
         fm_index = FMIndex()
         fm_index.load(reference_genome_path)
     print(log_file_name, ": computing entropy of seed set...")
@@ -1053,7 +1063,7 @@ def render_seed_set_comp(title, prefix, file_name, names,
         plot.output_backend = "svg"
         export_svgs(plot, filename=prefix + "svg/entropy-" + file_name + ".svg")
 
-def read_generation(time_steps=linear_range, backwards=False):
+def read_generation(time_steps=linear_range, backwards=False, survivor_error_profile=survivor_error_profile):
     ref_pack = Pack()
     ref_pack.load(reference_genome_path)
     print("genome size", ref_pack.unpacked_size())
@@ -1061,36 +1071,36 @@ def read_generation(time_steps=linear_range, backwards=False):
         if x_axis_unit == "genome_section_size":
             generate_genomes(time_steps, ref_pack, prefix + "genomes", backwards=backwards)
         if x_axis_unit == "read_noise":
-            generate_profiles(time_steps)
+            generate_profiles(time_steps, survivor_error_profile=survivor_error_profile)
             libMA.MinimizerIndex(get_mmi_parameter_set(), ref_pack.contigSeqs(),
                                 ref_pack.contigNames()).dump(prefix + "genomes/full.mmi")
     generate_reads(time_steps, prefix + "reads/", prefix + "genomes")
 
-def seed_entropy_analysis(w_paired=False, w_single=True, time_steps=linear_range):
+def seed_entropy_analysis(w_paired=True, w_single=False, time_steps=linear_range):
     if True:
-        #seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_seed_entropy.tsv",
-        #                                        w_paired, w_single, time_steps)
-        #seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
-        #                "smem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_seed_entropy.tsv",
+                                                w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
+                        "smem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
         seed_set_entropy(MinimizerToSmem(min_seed_length=mem_size_small), prefix, "mmi_to_smem_seed_entropy.tsv",
                                         w_paired, w_single, time_steps)
-        #seed_set_entropy(ExtendMinimizers(min_seed_length=mem_size_large), prefix, "mem_seed_entropy_"+str_msl+".tsv",
-        #                                    w_paired, w_single, time_steps)
+        seed_set_entropy(ExtendMinimizers(min_seed_length=mem_size_large), prefix, "mem_seed_entropy_"+str_msl+".tsv",
+                                            w_paired, w_single, time_steps)
         seed_set_entropy(MinimizerToMaxSpan(min_seed_length=mem_size_small), prefix,
                                             "mini_to_max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
-        #seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False),
-        #                prefix, "max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
-        #seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False), prefix,
-        #                                       "max_sp_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False),
+                        prefix, "max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False), prefix,
+                                               "max_sp_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
         
-        #seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True), prefix,
-        #            "fmd_mem_seed_entropy.tsv", w_paired, w_single, time_steps)
-        #seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
-        #            "fmd_mem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True), prefix,
+                    "fmd_mem_seed_entropy.tsv", w_paired, w_single, time_steps)
+        seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
+                    "fmd_mem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
     if True:
         seed_set_entropy(ComputeMinimizers(), prefix, "minimizer_seed_entropy.tsv", w_paired, w_single, time_steps)
         seed_set_entropy(ExtendMinimizers(), prefix, "mem_seed_entropy.tsv", w_paired, w_single, time_steps)
-    if False:
+    if True:
         render_times("Seed entropy - illumina", prefix, [
                     [("MEMs l≥19", "illumina_fmd_mem_seed_entropy.tsv", "grey")],
                     [("MEMs l≥"+str_msl, "illumina_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
@@ -1108,7 +1118,7 @@ def seed_entropy_analysis(w_paired=False, w_single=True, time_steps=linear_range
                 yAxisKey="entropy",
                 #yAxisKey2="percent read covered on ref",
                 y_axis_log=True )
-    if True:
+    if False:
         render_times("Seed entropy - PacBio", prefix, [
                             #[("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
                             #[("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
@@ -1139,11 +1149,11 @@ def seed_entropy_analysis(w_paired=False, w_single=True, time_steps=linear_range
                             [(str_mm+"-minimizer", "pacb_minimizer_seed_entropy.tsv", "red")],
                             [("Alg. 2b l≥"+str_mss+" (max. spanning)", "pacb_mini_to_max_sp_seed_entropy.tsv", "purple")],
                         ],
-                        "pacb_seed_entropy",
+                        "pacb_seed_correct_rate",
                         yAxisKey="percent seeds in area",
                         #yAxisKey2="percent read covered on ref",
                         y_axis_log=True )
-    if True:
+    if False:
         render_times("Seed entropy ratio - PacBio", prefix, [
                             #[("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
                             #[("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
@@ -1169,7 +1179,7 @@ def runtime_analysis():
     if x_axis_unit == "genome_section_size":
         measure_time(CreateFmdIndex(), prefix, "fm_index_construction.tsv")
         measure_time(CreateMinimizerIndex(), prefix, "minimizer_index_construction.tsv")
-    if True:
+    if False:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, extend_only=True), prefix,
                                             "smem_extend_computation.tsv", True)
@@ -1177,10 +1187,12 @@ def runtime_analysis():
                     "max_sp_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, extend_only=True), prefix,
                     "max_sp_seed_extend_computation.tsv", True)
+    if True:
         measure_time(ComputeMEMs(reference_genome_fasta, mem_size_large), prefix,
                     "mem_"+str_msl+"_seed_computation.tsv", True)
         measure_time(ComputeMEMs(reference_genome_fasta, mem_size_small), prefix,
                     "mem_seed_computation.tsv", True)
+    if False:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True), prefix,
                     "fmd_mem_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True,
@@ -1195,15 +1207,16 @@ def runtime_analysis():
                     "max_sp_"+str_msl+"_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(do_smems=False, min_seed_length=mem_size_large, extend_only=True), prefix,
                     "max_sp_"+str_msl+"_seed_extend_computation.tsv", True)
+    if True:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
                     "fmd_mem_"+str_msl+"_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True, 
                                              extend_only=True), prefix,
                     "fmd_mem_"+str_msl+"_seed_extend_computation.tsv", True)
-    if True:
+    if False:
         measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
         measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
-    if True:
+    if False:
         measure_time(MinimizerToSmem(), prefix, "minimizer_to_smem.tsv", True)
         measure_time(MinimizerToMaxSpan(), prefix, "minimizer_to_max_span.tsv", True)
         measure_time(ExtendThenSortMinimizers(), prefix, "extend_then_sort.tsv", True)
@@ -1253,46 +1266,47 @@ def runtime_analysis():
                     ],
                     "illumina_times_2",
                     divide_y_by=num_illumina_reads/1000 )
-    if True:
-        l = [
-            #[("fm-MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "black")],
-            #[("fm-MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "grey")],
-            [("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_computation.tsv", "black")],
-            [("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_computation.tsv", "grey")],
-            [("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_extend_computation.tsv", "black")],
-            [("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_extend_computation.tsv", "grey")],
+    l = [
+        #[("fm-MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "black")],
+        #[("fm-MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "grey")],
+        [("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_computation.tsv", "black")],
+        [("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_computation.tsv", "grey")],
+        [("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_extend_computation.tsv", "black")],
+        [("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_extend_computation.tsv", "grey")],
 
-            [("SMEMs l≥"+str_mss, "pacb_smem_computation.tsv", "blue")],
-            [("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_computation.tsv", "lightblue")],
-            [("SMEMs l≥"+str_mss, "pacb_smem_extend_computation.tsv", "blue")],
-            [("SMEMs l≥"+str_msl, "pacb_smem_extend_"+str_msl+"_computation.tsv", "lightblue")],
+        [("SMEMs l≥"+str_mss, "pacb_smem_computation.tsv", "blue")],
+        [("SMEMs l≥"+str_msl, "pacb_smem_"+str_msl+"_computation.tsv", "lightblue")],
+        [("SMEMs l≥"+str_mss, "pacb_smem_extend_computation.tsv", "blue")],
+        [("SMEMs l≥"+str_msl, "pacb_smem_extend_"+str_msl+"_computation.tsv", "lightblue")],
 
-            [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_computation.tsv", "green")],
-            [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_computation.tsv", "lightgreen")],
-            [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_extend_computation.tsv", "green")],
-            [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_extend_computation.tsv", "lightgreen")],
+        [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_computation.tsv", "green")],
+        [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_computation.tsv", "lightgreen")],
+        [("maximally spanning l≥"+str_mss, "pacb_max_sp_seed_extend_computation.tsv", "green")],
+        [("maximally spanning l≥"+str_msl, "pacb_max_sp_"+str_msl+"_seed_extend_computation.tsv", "lightgreen")],
 
-            [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
-            ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange")
-            ,("Alg. 2a (SMEMs)", "pacb_minimizer_to_smem.tsv", "pink")
-            ],
+        [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
+        ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange")
+        ,("Alg. 2a (SMEMs)", "pacb_minimizer_to_smem.tsv", "pink")
+        ],
 
-            [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
-            ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange"),
-            ("Alg. 2b (max. spanning)", "pacb_minimizer_to_max_span.tsv", "purple")],
+        [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
+        ("Alg. 1", "pacb_minimizer_lumping.tsv", "orange"),
+        ("Alg. 2b (max. spanning)", "pacb_minimizer_to_max_span.tsv", "purple")],
 
-            [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
-            ("Extend-Filter", "pacb_extend_then_sort.tsv", "yellow")],
-        ]
+        [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
+        ("Extend-Filter", "pacb_extend_then_sort.tsv", "yellow")],
+    ]
+    if False:
         render_times("runtimes - PacBio", prefix, l, "pacb_times",
-                    divide_y_by=num_pacb_reads/1000, y_range=(1,1000), y_axis_log=True )
+                    divide_y_by=num_pacb_reads/1000, y_range=(0.5,600), y_axis_log=True )
+    if True:
         render_times("runtimes - PacBio - fmd vs lcp", prefix, [
-                        [("fm-MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "blue")],
-                        [("fm-MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "lightblue")],
-                        [("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_computation.tsv", "black")],
-                        [("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_computation.tsv", "grey")],
+                        [("LCP-MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "blue")],
+                        [("LCP-MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "lightblue")],
+                        [("FMD-MEMs l≥"+str_mss, "pacb_fmd_mem_seed_computation.tsv", "black")],
+                        [("FMD-MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_computation.tsv", "grey")],
                     ], "pacb_times_fm_lcp",
-                    divide_y_by=num_pacb_reads/1000, y_range=(1,1000), y_axis_log=True )
+                    divide_y_by=num_pacb_reads/1000, y_axis_log=True )
     #render_times("runtime - index creation", prefix, [
     #                [("FMD-Index", "illumina_fm_index_construction.tsv", "blue")],
     #                [("10,19-minimizer Index", "illumina_minimizer_index_construction.tsv", "red")],
@@ -1342,35 +1356,37 @@ def seed_set_diff_analysis():
 
 
 
+prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_2000-chr1-full/"
+#survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
+local_max_ambiguity_fmd = 200000
+#read_generation()
+runtime_analysis()
+#seed_entropy_analysis()
+#seed_set_diff_analysis()
+
+exit(0)
+
+
 prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_200/"
-max_ambiguity_fmd = 200
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
-read_generation()
+local_max_ambiguity_fmd = 200
+#read_generation(survivor_error_profile="~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt")
 seed_entropy_analysis()
 runtime_analysis()
-seed_set_diff_analysis()
+#seed_set_diff_analysis()
 
 
-prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_2000/"
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
-max_ambiguity_fmd = 2000
-read_generation()
-runtime_analysis()
-seed_entropy_analysis()
-seed_set_diff_analysis()
 
 prefix = "/MAdata/transform_k_mers_into_smems/human_clr_200/"
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
-max_ambiguity_fmd = 200
-read_generation()
-runtime_analysis()
+local_max_ambiguity_fmd = 200
+#read_generation(survivor_error_profile="~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt")
+#runtime_analysis()
 seed_entropy_analysis()
-seed_set_diff_analysis()
+#seed_set_diff_analysis()
+
 
 prefix = "/MAdata/transform_k_mers_into_smems/human_clr_2000/"
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
-max_ambiguity_fmd = 2000
-read_generation()
-runtime_analysis()
+local_max_ambiguity_fmd = 2000
+#read_generation(survivor_error_profile="~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt")
+#runtime_analysis()
 seed_entropy_analysis()
-seed_set_diff_analysis()
+#seed_set_diff_analysis()

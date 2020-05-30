@@ -51,7 +51,7 @@ def gen_survivor_error_profile(out_file_name, in_file_name=survivor_error_profil
             out_file.write(str(pos) + "\t" + str(p_stop_val) + "\t" + str(p_match_val) + "\t" + str(p_missmatch_val) +
                            "\t" + str(p_ins_val) + "\t" + str(p_del_val) + "\n")
 
-def gen_survivor_error_profile_fac(out_file_name, fac=1):
+def gen_survivor_error_profile_fac(out_file_name, fac=1, survivor_error_profile=survivor_error_profile):
     gen_survivor_error_profile(out_file_name + "_" + str(fac) + ".txt",
                                survivor_error_profile,
                                p_mod=lambda x: min(1,x*fac))
