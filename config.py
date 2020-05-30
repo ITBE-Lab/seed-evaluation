@@ -8,8 +8,8 @@ prefix = "error"#"/MAdata/transform_k_mers_into_smems/human_ccs/"
 
 ##
 # @brief prefix of MA index
-reference_genome_path = "/MAdata/genome/human/GRCh38.p12-chr1-full/ma/genome"
-reference_genome_fasta = "/MAdata/genome/human/GRCh38.p12-chr1-full/fasta/genome.fna"
+reference_genome_path = "/MAdata/genome/human/GRCh38.p12/ma/genome"
+reference_genome_fasta = "/MAdata/genome/human/GRCh38.p12/fasta/genome.fna"
 ####reference_genome_path = "/MAdata/genome/human/GRCh38.p12-no_contigs/ma/genome"
 ####reference_genome_fasta = "/MAdata/genome/human/GRCh38.p12-no_contigs/fasta/genome.fna"
 

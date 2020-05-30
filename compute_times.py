@@ -1077,17 +1077,19 @@ def read_generation(time_steps=linear_range, backwards=False, survivor_error_pro
     generate_reads(time_steps, prefix + "reads/", prefix + "genomes")
 
 def seed_entropy_analysis(w_paired=True, w_single=False, time_steps=linear_range):
-    if True:
+    if False:
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_seed_entropy.tsv",
                                                 w_paired, w_single, time_steps)
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
                         "smem_"+str_msl+"_seed_entropy.tsv", w_paired, w_single, time_steps)
-        seed_set_entropy(MinimizerToSmem(min_seed_length=mem_size_small), prefix, "mmi_to_smem_seed_entropy.tsv",
-                                        w_paired, w_single, time_steps)
         seed_set_entropy(ExtendMinimizers(min_seed_length=mem_size_large), prefix, "mem_seed_entropy_"+str_msl+".tsv",
                                             w_paired, w_single, time_steps)
+    if True:
+        seed_set_entropy(MinimizerToSmem(min_seed_length=mem_size_small), prefix, "mmi_to_smem_seed_entropy.tsv",
+                                        w_paired, w_single, time_steps)
         seed_set_entropy(MinimizerToMaxSpan(min_seed_length=mem_size_small), prefix,
                                             "mini_to_max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
+    if False:
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False),
                         prefix, "max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False), prefix,
@@ -1102,15 +1104,15 @@ def seed_entropy_analysis(w_paired=True, w_single=False, time_steps=linear_range
         seed_set_entropy(ExtendMinimizers(), prefix, "mem_seed_entropy.tsv", w_paired, w_single, time_steps)
     if True:
         render_times("Seed entropy - illumina", prefix, [
-                    [("MEMs l≥19", "illumina_fmd_mem_seed_entropy.tsv", "grey")],
-                    [("MEMs l≥"+str_msl, "illumina_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
-                    [("SMEMs l≥"+str_mss, "illumina_smem_seed_entropy.tsv", "lightblue")],
-                    [("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
-                    [("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_entropy.tsv", "lightgreen")],
-                    [("maximally spanning l≥"+str_msl+"", "illumina_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
+                    #[("MEMs l≥19", "illumina_fmd_mem_seed_entropy.tsv", "grey")],
+                    #[("MEMs l≥"+str_msl, "illumina_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
+                    #[("SMEMs l≥"+str_mss, "illumina_smem_seed_entropy.tsv", "lightblue")],
+                    #[("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_seed_entropy.tsv", "blue")],
+                    #[("maximally spanning l≥"+str_mss, "illumina_max_sp_seed_entropy.tsv", "lightgreen")],
+                    #[("maximally spanning l≥"+str_msl+"", "illumina_max_sp_"+str_msl+"_seed_entropy.tsv", "green")],
                     [("Alg. 2a l≥"+str_mss+" (SMEMs)", "illumina_mmi_to_smem_seed_entropy.tsv", "pink")],
                     [("Alg. 1 l≥"+str_mss+" (MEMs)", "illumina_mem_seed_entropy.tsv", "orange")],
-                    [("Alg. 1 l≥"+str_msl+" (MEMs)", "illumina_mem_seed_entropy_"+str_msl+".tsv", "yellow")],
+                    #[("Alg. 1 l≥"+str_msl+" (MEMs)", "illumina_mem_seed_entropy_"+str_msl+".tsv", "yellow")],
                     [(str_mm+"-minimizer", "illumina_minimizer_seed_entropy.tsv", "red")],
                     [("Alg. 2b l≥"+str_mss+" (max. spanning)", "illumina_mini_to_max_sp_seed_entropy.tsv", "purple")],
                 ], 
