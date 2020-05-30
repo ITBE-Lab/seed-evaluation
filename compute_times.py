@@ -193,11 +193,11 @@ def measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_sin
     print("done")
 
 
-def measure_time(caller, prefix, log_file_name, with_single=False):
+def measure_time(caller, prefix, log_file_name, with_single=True):
     if x_axis_unit == "genome_section_size":
         measure_time_section_size(caller, prefix, log_file_name, with_single=with_single)
     if x_axis_unit == "read_noise":
-        measure_time_noise(caller, prefix, log_file_name, with_paired=False, with_single=with_single)
+        measure_time_noise(caller, prefix, log_file_name, with_paired=True, with_single=with_single)
 
 def render_times(title, prefix, element_list, out_file, yAxisKey="runtime", y_axis_log=False, yAxisKey2=None,
                  yAxisKeyDivident=None, divide_y_by=1, y_range=None):
@@ -1179,7 +1179,7 @@ def runtime_analysis():
     if x_axis_unit == "genome_section_size":
         measure_time(CreateFmdIndex(), prefix, "fm_index_construction.tsv")
         measure_time(CreateMinimizerIndex(), prefix, "minimizer_index_construction.tsv")
-    if False:
+    if True:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, extend_only=True), prefix,
                                             "smem_extend_computation.tsv", True)
@@ -1187,12 +1187,12 @@ def runtime_analysis():
                     "max_sp_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, extend_only=True), prefix,
                     "max_sp_seed_extend_computation.tsv", True)
-    if True:
+    if False: # crashes on full genome...
         measure_time(ComputeMEMs(reference_genome_fasta, mem_size_large), prefix,
                     "mem_"+str_msl+"_seed_computation.tsv", True)
         measure_time(ComputeMEMs(reference_genome_fasta, mem_size_small), prefix,
                     "mem_seed_computation.tsv", True)
-    if False:
+    if True:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True), prefix,
                     "fmd_mem_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True,
@@ -1213,10 +1213,10 @@ def runtime_analysis():
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True, 
                                              extend_only=True), prefix,
                     "fmd_mem_"+str_msl+"_seed_extend_computation.tsv", True)
-    if False:
+    if True:
         measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
         measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
-    if False:
+    if True:
         measure_time(MinimizerToSmem(), prefix, "minimizer_to_smem.tsv", True)
         measure_time(MinimizerToMaxSpan(), prefix, "minimizer_to_max_span.tsv", True)
         measure_time(ExtendThenSortMinimizers(), prefix, "extend_then_sort.tsv", True)
@@ -1245,7 +1245,7 @@ def runtime_analysis():
                     ],
                     "illumina_times",
                     divide_y_by=num_illumina_reads/1000 )
-    if False:
+    if True:
         render_times("runtimes - illumina", prefix, [
                         [("SMEMs l≥"+str_mss, "illumina_smem_computation.tsv", "blue")],
                         [("SMEMs l≥"+str_msl, "illumina_smem_"+str_msl+"_computation.tsv", "lightblue")],
@@ -1299,7 +1299,7 @@ def runtime_analysis():
     if False:
         render_times("runtimes - PacBio", prefix, l, "pacb_times",
                     divide_y_by=num_pacb_reads/1000, y_range=(0.5,600), y_axis_log=True )
-    if True:
+    if False:
         render_times("runtimes - PacBio - fmd vs lcp", prefix, [
                         [("LCP-MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "blue")],
                         [("LCP-MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "lightblue")],
@@ -1356,15 +1356,14 @@ def seed_set_diff_analysis():
 
 
 
-prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_2000-chr1-full/"
+prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_2000/"
 #survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
-local_max_ambiguity_fmd = 200000
+local_max_ambiguity_fmd = 2000
 #read_generation()
 runtime_analysis()
-#seed_entropy_analysis()
+seed_entropy_analysis()
 #seed_set_diff_analysis()
 
-exit(0)
 
 
 prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_200/"
@@ -1375,6 +1374,7 @@ runtime_analysis()
 #seed_set_diff_analysis()
 
 
+exit(0)
 
 prefix = "/MAdata/transform_k_mers_into_smems/human_clr_200/"
 local_max_ambiguity_fmd = 200
