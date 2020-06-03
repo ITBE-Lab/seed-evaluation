@@ -4,14 +4,12 @@ from MA import *
 # @brief output folder:
 # @note needs backslash at the end
 # folder must exist
-prefix = "error"#"/MAdata/transform_k_mers_into_smems/human_ccs/"
+prefix = "/MAdata/transform_k_mers_into_smems/human_ccs/"
 
 ##
 # @brief prefix of MA index
 reference_genome_path = "/MAdata/genome/human/GRCh38.p12/ma/genome"
 reference_genome_fasta = "/MAdata/genome/human/GRCh38.p12/fasta/genome.fna"
-####reference_genome_path = "/MAdata/genome/human/GRCh38.p12-no_contigs/ma/genome"
-####reference_genome_fasta = "/MAdata/genome/human/GRCh38.p12-no_contigs/fasta/genome.fna"
 
 ##
 # @brief survivor and dwgsim config
@@ -20,8 +18,7 @@ num_illumina_reads = 10000
 illumina_read_size = 250
 
 survivor_str = "~/workspace/SURVIVOR/Debug/SURVIVOR simreads_n "
-#survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
-survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
+survivor_error_profile = "~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt"
 num_pacb_reads = 1000
 
 ##
@@ -40,8 +37,8 @@ def get_mmi_parameter_set():
     return p_m
 
 ##
-# @brief MEM configuration
-max_ambiguity_fmd = 200
+# @brief occurence filter configuration configuration
+max_ambiguity_fmd = 2000
 
 mem_size_small = 19 # == k
 str_mss = str(mem_size_small)
@@ -69,4 +66,4 @@ if x_axis_unit == "read_noise":
 ##
 # @brief save plots as svg files
 # @note This requires selenium and phantomjs-prebuilt otherwise the application will crash
-save_plots = True
+save_plots = False

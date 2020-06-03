@@ -109,7 +109,7 @@ def generate_reads(time_steps, out_prefix, genome_prefix):
             dwgsim.create_reads_survivor(genome_prefix + "/slice_" + str(x) + ".fasta", out_prefix, num_pacb_reads,
                                         "slice_" + str(x), survivor_error_profile)
         if x_axis_unit == "read_noise":
-            if False:
+            if True:
                 dwgsim.create_illumina_reads_dwgsim(reference_genome_fasta, out_prefix, num_illumina_reads,
                                                     "noise_" + str(x), illumina_read_size, error_factor=x )
             if True:
@@ -1076,8 +1076,8 @@ def read_generation(time_steps=linear_range, backwards=False, survivor_error_pro
                                 ref_pack.contigNames()).dump(prefix + "genomes/full.mmi")
     generate_reads(time_steps, prefix + "reads/", prefix + "genomes")
 
-def seed_entropy_analysis(w_paired=True, w_single=False, time_steps=linear_range):
-    if False:
+def seed_entropy_analysis(w_paired=True, w_single=True, time_steps=linear_range):
+    if True:
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_seed_entropy.tsv",
                                                 w_paired, w_single, time_steps)
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large), prefix,
@@ -1089,7 +1089,7 @@ def seed_entropy_analysis(w_paired=True, w_single=False, time_steps=linear_range
                                         w_paired, w_single, time_steps)
         seed_set_entropy(MinimizerToMaxSpan(min_seed_length=mem_size_small), prefix,
                                             "mini_to_max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
-    if False:
+    if True:
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False),
                         prefix, "max_sp_seed_entropy.tsv", w_paired, w_single, time_steps)
         seed_set_entropy(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False), prefix,
@@ -1120,7 +1120,7 @@ def seed_entropy_analysis(w_paired=True, w_single=False, time_steps=linear_range
                 yAxisKey="entropy",
                 #yAxisKey2="percent read covered on ref",
                 y_axis_log=True )
-    if False:
+    if True:
         render_times("Seed entropy - PacBio", prefix, [
                             #[("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
                             #[("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
@@ -1155,7 +1155,7 @@ def seed_entropy_analysis(w_paired=True, w_single=False, time_steps=linear_range
                         yAxisKey="percent seeds in area",
                         #yAxisKey2="percent read covered on ref",
                         y_axis_log=True )
-    if False:
+    if True:
         render_times("Seed entropy ratio - PacBio", prefix, [
                             #[("MEMs l≥"+str_mss, "pacb_fmd_mem_seed_entropy.tsv", "grey")],
                             #[("MEMs l≥"+str_msl, "pacb_fmd_mem_"+str_msl+"_seed_entropy.tsv", "black")],
@@ -1181,7 +1181,7 @@ def runtime_analysis():
     if x_axis_unit == "genome_section_size":
         measure_time(CreateFmdIndex(), prefix, "fm_index_construction.tsv")
         measure_time(CreateMinimizerIndex(), prefix, "minimizer_index_construction.tsv")
-    if False:
+    if True:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small), prefix, "smem_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, extend_only=True), prefix,
                                             "smem_extend_computation.tsv", True)
@@ -1194,7 +1194,7 @@ def runtime_analysis():
                     "mem_"+str_msl+"_seed_computation.tsv", True)
         measure_time(ComputeMEMs(reference_genome_fasta, mem_size_small), prefix,
                     "mem_seed_computation.tsv", True)
-    if False:
+    if True:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True), prefix,
                     "fmd_mem_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_small, do_smems=False, do_mems=True,
@@ -1209,16 +1209,16 @@ def runtime_analysis():
                     "max_sp_"+str_msl+"_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(do_smems=False, min_seed_length=mem_size_large, extend_only=True), prefix,
                     "max_sp_"+str_msl+"_seed_extend_computation.tsv", True)
-    if False:
+    if True:
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True), prefix,
                     "fmd_mem_"+str_msl+"_seed_computation.tsv", True)
         measure_time(ComputeMaxExtendedSeeds(min_seed_length=mem_size_large, do_smems=False, do_mems=True, 
                                              extend_only=True), prefix,
                     "fmd_mem_"+str_msl+"_seed_extend_computation.tsv", True)
-    if False:
+    if True:
         measure_time(ComputeMinimizers(), prefix, "minimizer_computation.tsv", True)
         measure_time(LumpMinimizers(), prefix, "minimizer_lumping.tsv", True)
-    if False:
+    if True:
         measure_time(MinimizerToSmem(), prefix, "minimizer_to_smem.tsv", True)
         measure_time(MinimizerToMaxSpan(), prefix, "minimizer_to_max_span.tsv", True)
         measure_time(ExtendThenSortMinimizers(), prefix, "extend_then_sort.tsv", True)
@@ -1247,7 +1247,7 @@ def runtime_analysis():
                     ],
                     "illumina_times",
                     divide_y_by=num_illumina_reads/1000 )
-    if False:
+    if True:
         render_times("runtimes - illumina", prefix, [
                         [("MEMs l≥"+str_mss, "illumina_fmd_mem_seed_computation.tsv", "black")],
                         [("MEMs l≥"+str_msl, "illumina_fmd_mem_"+str_msl+"_seed_computation.tsv", "grey")],
@@ -1300,10 +1300,10 @@ def runtime_analysis():
         [(str_mm+"-minimizer", "pacb_minimizer_computation.tsv", "red"),
         ("Extend-Filter", "pacb_extend_then_sort.tsv", "yellow")],
     ]
-    if False:
+    if True:
         render_times("runtimes - PacBio", prefix, l, "pacb_times",
                     divide_y_by=num_pacb_reads/1000, y_range=(0.5,600), y_axis_log=True )
-    if True:
+    if False:
         render_times("runtimes - PacBio - fmd vs lcp", prefix, [
                         [("LCP-MEMs l≥"+str_mss, "pacb_mem_seed_computation.tsv", "blue")],
                         [("LCP-MEMs l≥"+str_msl, "pacb_mem_"+str_msl+"_seed_computation.tsv", "lightblue")],
@@ -1360,38 +1360,7 @@ def seed_set_diff_analysis():
                             divide_y_by=num_pacb_reads, y_range=(0, 800))
 
 
-
-prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_2000-chr1-full/"
-#survivor_error_profile = "~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt"
-local_max_ambiguity_fmd = 2000
-#read_generation()
+read_generation()
 runtime_analysis()
-#seed_entropy_analysis()
-#seed_set_diff_analysis()
-
-exit(0)
-
-
-prefix = "/MAdata/transform_k_mers_into_smems/human_ccs_200/"
-local_max_ambiguity_fmd = 200
-#read_generation(survivor_error_profile="~/workspace/SURVIVOR/HG002_PacBio_CCS_10kb_error_profile_mm2.txt")
-#seed_entropy_analysis()
-runtime_analysis()
-#seed_set_diff_analysis()
-
-
-
-prefix = "/MAdata/transform_k_mers_into_smems/human_clr_200/"
-local_max_ambiguity_fmd = 200
-#read_generation(survivor_error_profile="~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt")
-#runtime_analysis()
 seed_entropy_analysis()
-#seed_set_diff_analysis()
-
-
-prefix = "/MAdata/transform_k_mers_into_smems/human_clr_2000/"
-local_max_ambiguity_fmd = 2000
-#read_generation(survivor_error_profile="~/workspace/SURVIVOR/HG002_Pac_error_profile_bwa.txt")
-#runtime_analysis()
-seed_entropy_analysis()
-#seed_set_diff_analysis()
+seed_set_diff_analysis()
