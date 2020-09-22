@@ -1,6 +1,10 @@
 # A performant bridge between fixed-size and variable-size seeding
 This repository contains the scripts for the experiments performed in
-[A performant bridge between fixed-size and variable-size seeding](https://doi.org/10.1101/825927 "bioRxiv - preprint").
+[A performant bridge between fixed-size and variable-size seeding](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-020-03642-y " ").
+
+| :exclamation: The pseudocode of Algorithm 2b contains an error: The Build-Max-Heap operation in line 7 should be "descending by *l*; for equal *l* descending by *q*" (more info below) |
+|-----------------------------------------|
+
 
 ## Requirements
 
@@ -11,7 +15,7 @@ This repository contains the scripts for the experiments performed in
 | SURVIVOR | `git clone https://github.com/ITBE-Lab/SURVIVOR; cd SURVIVOR/Debug; make -j$(nproc); cd ..; unzip *.zip` | 1.0.5 | Tool for generating PacBio reads. (Modified by us, to generate specific amounts of reads.) |
 | Python 3 | `sudo apt-get install python3` | 3.5.3 | Python 3 environment. |
 | Bokeh | `sudo apt-get install python3-pip; pip3 install bokeh` | 1.4.0 | Plotting library. |
-| MA - The Modular Aligner | see below | 1.1.1-b7cf5e7 | C++ library implementing all runtime critical code. |
+| MA - The Modular Aligner | see below | 1.1.1-ef9ab22 | C++ library implementing all runtime critical code. |
 | cmake | `sudo apt-get install cmake` | 3.13.2 | Compiling MA. |
 
 Our testing environment: Debian GNU/Linux with a 4.9.0 kernel.
@@ -56,3 +60,15 @@ This will trigger 4 functions (very bottom of the script):
 - `seed_set_diff_analysis`: Performs the seed set difference analysis (Figure 3 of the manuscript).
 
 Tip: Double clicking on a plot will toggle the legend visibility.
+
+## Algorithm 2b
+
+The published pseudocode for extracting maximal spanning seeds from MEMs contains an error: \
+The Build-Max-Heap operation in line 7 should be "descending by *l*; for equal *l* descending by *q*" so that the 
+first element in the max-heap is the largest seed (there can be multiple seeds with the same size) that reaches the furthest right. \
+This error was only in the pseudocode; the actual implementation and measurements are correct.
+
+Further, a max-heap is not actually required. Instead a single iteration over *T* is enough to extract all relevant seeds:
+![Alt text](mems_to_max_sp.png?raw=true "Algorithm 2b")
+
+We would like to thank Roman Cheplyaka for pointing out our mistake as well as this optimization.
