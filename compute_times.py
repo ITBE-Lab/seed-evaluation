@@ -982,6 +982,8 @@ def render_seed_set_comp(title, prefix, file_name, names,
                          divide_y_by=1, y_range=None):
     xAxes = []
     yAxes = []
+    yAxesRecall = []
+    yAxesPrecision = []
     legends = []
     colors = []
     xAxes2 = []
@@ -993,6 +995,10 @@ def render_seed_set_comp(title, prefix, file_name, names,
         header = {y:x for x,y in enumerate(lines[0])}
         xAxes.append([ float(x[header["genome size"]]) for x in lines[1:] ])
         yAxes.append([ int(x[header["unique mmis"]])/divide_y_by for x in lines[1:] ])
+        yAxesRecall.append([ float(x[header["shared seeds"]]) /
+                ( float(x[header["unique smems"]]) + float(x[header["shared seeds"]]) ) for x in lines[1:] ])
+        yAxesPrecision.append([ float(x[header["shared seeds"]]) /
+                ( float(x[header["unique mmis"]]) + float(x[header["shared seeds"]]) ) for x in lines[1:] ])
         legends.append(names[0])
         colors.append(color_scheme("red"))
 
@@ -1023,6 +1029,33 @@ def render_seed_set_comp(title, prefix, file_name, names,
 
     reset_output()
     if x_axis_unit == "genome_section_size":
+        plot = figure(title=title, x_axis_type="log", y_range=(0,1))
+    if x_axis_unit == "read_noise":
+        plot = figure(title=title, y_range=(0,1))
+    for yAxis, xAxis in zip(yAxesRecall, xAxes):
+        plot.line(x=xAxis, y=yAxis, legend_label="recall " + file_name, line_color=color_scheme("blue"), line_width=point_to_px(4))
+        plot.x(x=xAxis, y=yAxis, legend_label="recall " + file_name, line_color=color_scheme("blue"),
+                size=point_to_px(7), line_width=point_to_px(2))
+    for yAxis, xAxis in zip(yAxesPrecision, xAxes):
+        plot.line(x=xAxis, y=yAxis, legend_label="precision " + file_name, line_color=color_scheme("red"),
+                    line_width=point_to_px(4))
+        plot.x(x=xAxis, y=yAxis, legend_label="precision " + file_name, line_color=color_scheme("red"),
+                size=point_to_px(7), line_width=point_to_px(2))
+    plot.legend.location = "top_left"
+    if x_axis_unit == "genome_section_size":
+        plot.xaxis.axis_label = "section length [nt]"
+    if x_axis_unit == "read_noise":
+        plot.xaxis.axis_label = "read noise"
+    plot.yaxis.axis_label = "recall & precision"
+    style_plot(plot)
+    show(plot)
+    if save_plots:
+        plot.output_backend = "svg"
+        export_svgs(plot, filename=prefix + "svg/recall-precision-" + file_name + ".svg")
+
+    # output recall and precesion
+    reset_output()
+    if x_axis_unit == "genome_section_size":
         plot = figure(title=title, x_axis_type="log", y_range=y_range)
     if x_axis_unit == "read_noise":
         plot = figure(title=title, y_range=y_range)
@@ -1042,6 +1075,7 @@ def render_seed_set_comp(title, prefix, file_name, names,
         plot.output_backend = "svg"
         export_svgs(plot, filename=prefix + "svg/" + file_name + ".svg")
     #output entropy as well
+
     reset_output()
     if x_axis_unit == "genome_section_size":
         plot = figure(title=title, x_axis_type="log")
